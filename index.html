@@ -1,0 +1,2352 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="CoDCMaTCfVldPyzLwnEPG0">
+<head data-page-node-id="mlJwqUhVg9k8H32zpjPDFS">
+<meta charset="UTF-8" data-page-node-id="ASUZ1bABKc1m9o2L2cXBJb">
+<meta name="viewport" content="width=device-width,initial-scale=1" data-page-node-id="QHezSur38DWpO2xABB3fGg">
+<title>Wendy's KeyWord — 视频单词打字练习</title>
+<style>
+:root{
+  --bg:#0a0b10;--pnl:#12141c;--pnl2:#1a1d28;--ln:#262a38;--ln2:#323747;
+  --tx:#e8eaf2;--tx2:#9aa0b8;--tx3:#5f657d;
+  --cy:#3ddc97;--am:#ffb020;--rd:#ff4d5e;--vi:#9b6dff;--bl:#4dc4ff;
+  --ok:#3ddc97;--er:#ff4d5e;--cur:#ffb020;
+  /* --wait 是「遮蔽中未打出的字母」的颜色。原 #4a5068 在深色背景上几乎看不见，
+     整行只剩当前位下面那个小点，用户不知道后面还有几个字母。
+     调到 #6e7488：既明显弱于已打对的绿和当前位的橙，又能看清有几个字。 */
+  --wait:#6e7488;
+  --accent:#3ddc97;                 /* 品牌强调色：榜单“我”行背景 / 昵称框聚焦边框（此前漏定义，.me 行一直没高亮） */
+  --pn:#8b93a8;                     /* 标点字符色 */
+  --prog:rgba(255,255,255,.07);     /* 进度条槽 */
+  --m1:#f5c518;--m2:#c8c8c8;--m3:#cd7f32;  /* 前三名奖牌色 */
+}
+
+/* ================= 主题配色 =================
+   dark（默认，原样不动）/ white（浅色·中性）/ green（浅色·绿意）
+   全部通过覆盖 CSS 变量实现——组件早已全程变量化，这里不碰业务选择器。
+   ?theme=white|green|dark 可强制指定（并记住选择），见 head 内联脚本。 */
+:root[data-theme="white"]{
+  --bg:#f2f3f6;--pnl:#ffffff;--pnl2:#eceef3;--ln:#dfe2e9;--ln2:#c6cad4;
+  --tx:#1b1e26;--tx2:#5a6172;--tx3:#7b8293;
+  --cy:#0a9d66;--ok:#0a9d66;--accent:#0a9d66;--er:#d92d42;--rd:#d92d42;
+  --am:#b06d00;--cur:#b06d00;--vi:#7a4dd6;--bl:#0e8ac0;
+  --wait:#a9afc0;--pn:#6d7383;--prog:rgba(0,0,0,.08);
+  --m1:#b8860b;--m2:#78808f;--m3:#a05a2c;
+}
+:root[data-theme="green"]{
+  --bg:#edf6ef;--pnl:#ffffff;--pnl2:#e2f0e6;--ln:#cde3d3;--ln2:#b3d2bb;
+  --tx:#15281b;--tx2:#4d6355;--tx3:#74897b;
+  --cy:#0b8a4e;--ok:#0b8a4e;--accent:#0b8a4e;--er:#cc2e40;--rd:#cc2e40;
+  --am:#a56705;--cur:#a56705;--vi:#7248d0;--bl:#0d84b6;
+  --wait:#a8bcae;--pn:#64796c;--prog:rgba(0,0,0,.08);
+  --m1:#b8860b;--m2:#78808f;--m3:#a05a2c;
+}
+/* 朗读诊断角标的琥珀底色是写死的 rgba，浅色主题下必须换深琥珀才看得见 */
+:root[data-theme="white"] .ttsbadge,
+:root[data-theme="green"] .ttsbadge{background:rgba(176,109,0,.10);border-color:rgba(176,109,0,.38)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--tx);min-height:100vh;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  padding:0;overflow-x:hidden;
+}
+.wrap{max-width:940px;margin:0 auto;padding:20px 20px 60px}
+
+/* 震屏容器 */
+#stage{transition:transform .06s cubic-bezier(.36,.07,.19,.97)}
+
+/* ---------- header ---------- */
+.hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.hd h1{font-family:ui-monospace,Consolas,monospace;font-size:15px;letter-spacing:.24em;color:var(--cy)}
+.hd .meta{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--tx3);letter-spacing:.08em}
+
+/* ---------- live stats ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;
+  background:var(--ln);border:1px solid var(--ln);border-radius:11px;overflow:hidden;margin-bottom:20px}
+.stat{background:var(--pnl);padding:11px 13px}
+.stat .sv{font-family:ui-monospace,monospace;font-size:20px;font-weight:700;line-height:1.15;
+  transition:transform .08s,color .15s}
+.stat .sl{font-size:9px;letter-spacing:.14em;color:var(--tx3);margin-top:3px;text-transform:uppercase}
+.stat .sv.pulse{transform:scale(1.22);color:var(--cy)}
+.stat .sv.pulseBad{transform:scale(1.18);color:var(--er)}
+.c-cy{color:var(--cy)}.c-am{color:var(--am)}.c-rd{color:var(--er)}.c-vi{color:var(--vi)}.c-bl{color:var(--bl)}
+
+/* ---------- progress ---------- */
+.prog{height:4px;background:var(--prog);border-radius:99px;overflow:hidden;margin-bottom:24px}
+.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cy),var(--bl));
+  border-radius:99px;transition:width .1s linear}
+
+/* ---------- combo ---------- */
+.combo{display:flex;align-items:baseline;gap:12px;height:56px;margin-bottom:4px}
+.combo .n{font-family:ui-monospace,monospace;font-size:40px;font-weight:700;color:var(--am);
+  line-height:1;transition:transform .09s cubic-bezier(.2,1.6,.4,1),color .2s,opacity .25s}
+.combo .n.zero{color:var(--tx3);opacity:.45}
+.combo .n.pop{transform:scale(1.35)}
+.combo .lab{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.2em;color:var(--tx3)}
+.combo .mult{font-family:ui-monospace,monospace;font-size:14px;color:var(--vi);
+  padding:3px 9px;border:1px solid var(--ln);border-radius:6px;transition:.2s}
+.combo .mult.hot{color:#06140e;background:var(--cy);border-color:var(--cy)}
+
+/* ---------- word display ---------- */
+.wordbox{background:var(--pnl);border:1px solid var(--ln);border-radius:16px;padding:42px 30px;
+  text-align:center;margin-bottom:18px;position:relative;overflow:hidden}
+.word{font-family:ui-monospace,Consolas,monospace;font-size:clamp(30px,7vw,52px);font-weight:700;
+  letter-spacing:.08em;line-height:1.25;word-break:break-word}
+.ch{position:relative;display:inline-block;transition:color .1s,transform .09s}
+.ch.w{color:var(--wait)}
+.ch.cur{color:var(--cur);transform:translateY(-4px)}
+.ch.cur::after{content:"";position:absolute;left:50%;bottom:-9px;width:3px;height:3px;
+  margin-left:-1.5px;border-radius:99px;background:var(--cur);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.ch.ok{color:var(--ok)}
+.ch.err{color:var(--er)}
+.ch.err::after{content:"×";position:absolute;top:-15px;left:50%;transform:translateX(-50%);
+  font-size:13px;color:var(--er)}
+/* 空格位：␣ 符号用弱化色 + 更窄，避免和字母抢视觉 */
+.ch.sp{color:var(--tx3);font-size:.62em;vertical-align:.12em;padding:0 .04em}
+/* 连字符 / 撇号：必须一直可见（否则用户不知道这里要按什么键），
+   但【不能用 --ok / --cy 绿】—— 那个颜色代表「已打对」，
+   用一样的绿会让人误以为连字符已经打完了。
+   改用中性亮灰 + 略小字号：可见但不抢「已打对」的语义。 */
+.ch.pn{color:var(--pn);font-size:.82em;font-weight:600}
+/* 连字符已打对时：跟着 .ok 变绿，说明这一步完成了 */
+.ch.pn.ok{color:var(--ok)}
+.ch.pop{animation:pop .18s cubic-bezier(.2,1.7,.4,1)}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.3);color:#fff}100%{transform:scale(1)}}
+.wordbox.flashGood{animation:fg .22s ease}
+.wordbox.flashBad{animation:fb .22s ease}
+@keyframes fg{0%{border-color:var(--ln)}40%{border-color:var(--ok);box-shadow:0 0 34px -8px rgba(61,220,151,.5)}}
+@keyframes fb{0%{border-color:var(--ln)}40%{border-color:var(--er);box-shadow:0 0 34px -8px rgba(255,77,94,.5)}}
+
+.hint{font-size:12px;color:var(--tx3);margin-top:16px;line-height:1.7}
+.hint kbd{font-family:ui-monospace,monospace;font-size:10.5px;background:var(--pnl2);
+  border:1px solid var(--ln);border-radius:4px;padding:2px 6px;color:var(--tx2)}
+
+/* ---------- controls ---------- */
+.ctl{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:22px}
+.btn{font-family:inherit;font-size:13px;font-weight:600;color:#06140e;cursor:pointer;
+  background:linear-gradient(180deg,#4fe6a8,#2fbd80);border:none;border-radius:9px;
+  padding:10px 20px;transition:transform .09s,filter .15s}
+.btn:active{transform:scale(.96)}
+.btn.g{background:transparent;color:var(--tx2);border:1px solid var(--ln2);font-weight:500}
+.btn.g:hover{color:var(--tx);border-color:var(--tx3)}
+select,label.sw{font-family:inherit;font-size:12.5px;color:var(--tx2);background:var(--pnl);
+  border:1px solid var(--ln);border-radius:8px;padding:9px 12px;cursor:pointer}
+label.sw{display:flex;align-items:center;gap:7px;user-select:none}
+label.sw input{accent-color:var(--cy);cursor:pointer}
+/* ---------- 主题切换 ---------- */
+.themes{display:inline-flex;gap:2px;padding:3px;background:var(--pnl);border:1px solid var(--ln);border-radius:9px}
+.themes .th{display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:12px;font-weight:600;
+  color:var(--tx2);background:transparent;border:none;border-radius:6px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.themes .th:hover{color:var(--tx)}
+.themes .th.on{color:#06140e;background:var(--cy)}
+.themes .dot{width:10px;height:10px;border-radius:50%;border:1px solid var(--ln2);flex:none}
+.dot.d-dark{background:linear-gradient(135deg,#0a0b10 50%,#3ddc97 50%)}
+.dot.d-white{background:linear-gradient(135deg,#ffffff 50%,#0a9d66 50%)}
+.dot.d-green{background:linear-gradient(135deg,#edf6ef 50%,#0b8a4e 50%)}
+.spacer{flex:1}
+/* 朗读音量指示：跟音效开关同风格，但不做成可点控件（没有交互） */
+.ttsvol{font-family:inherit;font-size:11.5px;color:var(--cy);background:var(--pnl);
+  border:1px solid var(--ln);border-radius:8px;padding:9px 11px;
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;
+  opacity:.62;transition:opacity .18s ease}
+/* 朗读诊断角标：只在「尝试过但没真正出声」时出现，点一下用手势重试 */
+.ttsbadge{font-family:inherit;font-size:11.5px;color:var(--cur);
+  background:rgba(255,176,32,.12);border:1px solid rgba(255,176,32,.38);
+  border-radius:8px;padding:9px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ttsbadge.hide{display:none}
+/* 浏览器根本不支持朗读时：灰色、不可点（点了也没用，别误导用户） */
+.ttsbadge.dead{cursor:default;color:var(--tx3);background:var(--pnl);border-color:var(--ln)}
+
+/* 音频被拦住时的解锁入口 */
+.aubadge{font-family:inherit;font-size:11.5px;color:var(--am);background:var(--pnl);
+  border:1px solid var(--am);border-radius:8px;padding:9px 11px;cursor:pointer;
+  user-select:none;white-space:nowrap}
+.aubadge:active{transform:scale(.96)}
+.aubadge.hide{display:none}
+
+/* ---------- 访问计数角标（右下角，不干扰打字） ---------- */
+#visitor{position:fixed;right:12px;bottom:12px;z-index:50;
+  font-family:ui-monospace,monospace;font-size:11px;color:var(--tx3);
+  background:var(--pnl);border:1px solid var(--ln);border-radius:20px;
+  padding:5px 12px;opacity:.72;transition:opacity .25s;
+  -webkit-tap-highlight-color:transparent}
+#visitor:hover{opacity:1}
+#visitor b{color:var(--tx2);font-weight:600}
+#visitor .sep{opacity:.4;margin:0 4px}
+
+/* ---------- 中文释义 ---------- */
+.cn{font-family:"PingFang SC","Microsoft YaHei","Songti SC",sans-serif;
+  font-size:17px;line-height:1.5;color:var(--cy);
+  margin-top:14px;padding-top:13px;border-top:1px dashed var(--ln);
+  letter-spacing:.04em}
+.cn.dim{color:var(--tx3)}
+
+/* ---------- 导入词库 ---------- */
+.importer{background:var(--pnl);border:1px solid var(--ln);border-radius:12px;
+  padding:16px 18px;margin-bottom:18px}
+.importer.hide{display:none}
+.importer h3{font-family:ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;
+  color:var(--tx3);text-transform:uppercase;margin-bottom:10px}
+.ihint{font-size:12px;color:var(--tx2);margin-bottom:8px}
+.iex{font-family:ui-monospace,monospace;font-size:11.5px;line-height:1.75;color:var(--tx3);
+  background:var(--pnl2);border:1px solid var(--ln);border-radius:8px;
+  padding:11px 13px;margin:0 0 11px;overflow-x:auto;white-space:pre-wrap}
+.importer textarea{width:100%;min-height:150px;resize:vertical;
+  font-family:ui-monospace,monospace;font-size:13px;line-height:1.7;
+  color:var(--tx1);background:var(--pnl2);border:1px solid var(--ln);
+  border-radius:8px;padding:12px 14px;outline:none}
+.importer textarea:focus{border-color:var(--cy)}
+.ibrow{display:flex;align-items:center;gap:9px;margin-top:12px;flex-wrap:wrap}
+.imsg{font-size:12px;color:var(--cy)}
+.imsg.err{color:var(--er)}
+
+/* ---------- wrong book ---------- */
+.wrong{background:var(--pnl);border:1px solid var(--ln);border-radius:12px;padding:16px 18px;margin-bottom:18px}
+.wrong h3{font-family:ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;color:var(--tx3);
+  text-transform:uppercase;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.wlist{display:flex;flex-wrap:wrap;gap:7px}
+.witem{font-family:ui-monospace,monospace;font-size:12px;padding:6px 11px;border-radius:7px;
+  background:var(--pnl2);border:1px solid var(--ln);display:flex;align-items:center;gap:7px}
+.witem .bad{color:var(--er)}
+.witem .wcn{font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:11px;color:var(--tx3)}
+.witem .cnt{font-size:10px;color:var(--tx3)}
+.witem.clear{cursor:pointer}
+.witem.clear:hover{border-color:var(--er);color:var(--er)}
+.empty{font-size:12px;color:var(--tx3);font-style:italic}
+
+/* ---------- 排行榜 ---------- */
+.board{background:var(--pnl);border:1px solid var(--ln);border-radius:12px;padding:16px 18px;margin-bottom:18px}
+.board h3{font-family:ui-monospace,monospace;font-size:10.5px;letter-spacing:.16em;color:var(--tx3);
+  text-transform:uppercase;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.bbank{font-size:13px;letter-spacing:0;color:var(--tx);text-transform:none;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+.bjoin{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.nick{font-family:ui-monospace,monospace;font-size:13px;padding:7px 11px;border-radius:8px;
+  background:var(--bg2);border:1px solid var(--ln);color:var(--tx);min-width:240px;flex:1}
+.nick:disabled{opacity:.45;cursor:not-allowed}
+.nick:focus{outline:none;border-color:var(--accent)}
+.nickmsg{font-size:12px;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+.nickmsg.ok{color:var(--ok)}
+.nickmsg.err{color:var(--er)}
+.blist{display:flex;flex-direction:column;gap:5px;max-height:420px;overflow:auto}
+.bhead,.brow{display:grid;grid-template-columns:34px minmax(0,1fr) 62px 56px 46px 72px;align-items:center;gap:8px;padding:8px 10px;border-radius:8px}
+.bhead{font-size:11px;color:var(--tx3);font-family:ui-monospace,monospace;letter-spacing:.04em;background:transparent;border:0}
+.brow{background:var(--pnl2);border:1px solid var(--ln);font-size:13px}
+.brow .rk{font-family:ui-monospace,monospace;font-weight:700;text-align:center;color:var(--tx3)}
+.brow.top1 .rk{color:var(--m1)}.brow.top2 .rk{color:var(--m2)}.brow.top3 .rk{color:var(--m3)}
+.brow .nm{font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow .tm{font-family:ui-monospace,monospace;color:var(--tx);font-variant-numeric:tabular-nums;text-align:right}
+.brow .ac,.brow .cb{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums;text-align:right;color:var(--tx)}
+.brow .dt{font-size:11px;color:var(--tx3);text-align:right}
+.brow.me{background:var(--accent);border-color:var(--accent)}
+.brow.me .nm,.brow.me .tm,.brow.me .ac,.brow.me .cb,.brow.me .dt{color:#fff}
+.bnote{font-size:11.5px;color:var(--tx3);margin-top:10px;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+.bnote.err{color:var(--er)}
+.nickmsg a,.bnote a{color:inherit;text-decoration:underline;cursor:pointer;font-weight:600}
+
+/* ---------- done panel ---------- */
+#done{display:none;text-align:center;padding:20px 0}
+#done.on{display:block}
+#done .dt{font-family:ui-monospace,monospace;font-size:clamp(24px,6vw,36px);font-weight:700;color:var(--cy)}
+.bhead .dt{font-size:11px;color:var(--tx3);font-weight:400}
+.ds{margin-top:8px;font-size:12px;letter-spacing:.24em;color:var(--tx3);text-transform:uppercase}
+.dg{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:1px;background:var(--ln);
+  border:1px solid var(--ln);border-radius:12px;overflow:hidden;margin-top:26px}
+/* 本轮词表回顾 */
+.dlist{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px;max-height:158px;overflow-y:auto}
+.ritem{display:inline-flex;align-items:baseline;gap:6px;padding:6px 11px;border-radius:7px;
+  background:var(--pnl2);border:1px solid var(--ln)}
+.ritem .ren{font-family:ui-monospace,monospace;font-size:12px;color:var(--tx1)}
+.ritem .rcn{font-family:"PingFang SC","Microsoft YaHei",sans-serif;font-size:11px;color:var(--tx3)}
+.ritem .rn{font-family:ui-monospace,monospace;font-size:10px;color:var(--am);font-weight:700}
+.rnote{width:100%;margin-top:4px;font-size:11.5px;color:var(--tx3);font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+
+/* ---------- 手机软键盘的接入口 ----------
+   必须「可聚焦」才唤得起手机键盘，所以不能用 display:none / visibility:hidden。
+   做法：1px 透明输入框固定定位藏起来，靠 JS 在用户手势里 focus() 唤起键盘。
+   font-size:16px 是必须的 —— iOS 聚焦字号 <16px 的输入框会自动放大整页。 */
+#kb{position:fixed;left:0;top:0;width:1px;height:1px;padding:0;border:0;outline:none;
+  opacity:0;background:transparent;color:transparent;font-size:16px;
+  pointer-events:none;z-index:0}
+/* 手机提示：只在小屏显示（桌面有物理键盘，说了是噪音） */
+.mobonly{display:none}
+
+/* ---------- 小屏适配 ----------
+   原来一条响应式规则都没有。手机上纵向空间还要被软键盘吃掉一半，
+   所以除了缩字号，还要把各处外边距压紧，让词框尽量留在首屏。 */
+@media (max-width:640px){
+  .wrap{padding:12px 12px 44px}
+  .hd{margin-bottom:12px}
+  .hd h1{font-size:13px;letter-spacing:.18em}
+  .stats{margin-bottom:12px;grid-template-columns:repeat(3,1fr)}
+  .stat{padding:9px 10px}
+  .stat .sv{font-size:17px}
+  .prog{margin-bottom:14px}
+  .combo{height:44px;gap:9px;margin-bottom:2px}
+  .combo .n{font-size:32px}
+  .wordbox{padding:24px 12px;margin-bottom:12px;border-radius:14px}
+  /* 8vw 而不是原来的 7vw：词组（china telecom / united nations）在窄屏上要能放下，
+     再配合 word-break 兜底换行，宁可换行也别横向溢出 */
+  .word{font-size:clamp(23px,8vw,38px);letter-spacing:.04em}
+  .cn{font-size:15px;margin-top:11px;padding-top:10px}
+  .ctl{gap:7px;margin-bottom:14px}
+  .btn{padding:10px 15px;font-size:12.5px}
+  select,label.sw{padding:9px 10px;font-size:12px}
+  .themes .th{padding:8px 9px;font-size:11.5px}
+  .ttsvol{padding:9px 9px}
+  .importer{padding:13px 13px}
+  .iex{font-size:11px}
+  .hint{margin-top:11px;font-size:11.5px}
+  .wrong{padding:13px 13px}
+  .mobonly{display:inline}
+}
+/* 触摸设备：去掉 300ms 点击延迟 + 词框看起来可点 */
+@media (hover:none){
+  .btn,select,label.sw,.witem.clear{touch-action:manipulation}
+  .wordbox{cursor:pointer}
+}
+/* 手机上把桌面快捷键说明换掉：手机没有 Tab/Esc 键 */
+@media (max-width:640px){
+  .hint .deskonly{display:none}
+}
+</style>
+<meta name="theme-color" content="#0a0b10">
+<script>(function(){try{var q=new URLSearchParams(location.search).get("theme");
+var t=(q==="white"||q==="green"||q==="dark")?q:(localStorage.getItem("keystroke.theme")||"dark");
+localStorage.setItem("keystroke.theme",t);document.documentElement.setAttribute("data-theme",t);
+}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();</script>
+</head>
+<body data-page-node-id="ZJdqHc90hnwlDCdQGsTJ2b">
+<div id="stage" data-page-node-id="OePJBxup5hBYJl4IUBjceX">
+<div class="wrap" data-page-node-id="M5OD6JnEdm3WegLWMavALl">
+
+  <div class="hd" data-page-node-id="8f0HbhuJ8jSFl9DyOielSu">
+    <h1 data-page-node-id="bVPbhnITjZtTgnB4EnCq6r">Wendy's KeyWord</h1>
+    <div class="meta" id="metaTxt" data-page-node-id="xESqOMRENiBjNU3dSWvquY">就绪</div>
+  </div>
+
+  <div class="stats" data-page-node-id="rx96uU4nDVdm0elk8m4Tu1">
+    <div class="stat" data-page-node-id="cSjT1KNdcEaXOlSCqLID6z"><div class="sv c-cy" id="sAcc" data-page-node-id="lptjzdjRRdvozE1N6lLkkg">100%</div><div class="sl" data-page-node-id="XzFof0ffRqyI6JNqbTo8bX">准确率</div></div>
+    <div class="stat" data-page-node-id="CEKNuf2QKzE476Kpk8r8dQ"><div class="sv c-am" id="sWpm" data-page-node-id="O0bq2gAaQV7KvRqnyRvIaU">0</div><div class="sl" data-page-node-id="kqVXTbBiVl7IBB2QoQAJKT">WPM</div></div>
+    <div class="stat" data-page-node-id="VUXUeLwYJy4UqGoE2kKt1N"><div class="sv c-vi" id="sCombo" data-page-node-id="RkbPFKgcVRLC47bG7sggGi">×1.0</div><div class="sl" data-page-node-id="qfm6bivI9jtMsrDb8qAI3A">倍率</div></div>
+    <div class="stat" data-page-node-id="AHBVymyhHnA4DzmEvhDn1Y"><div class="sv c-bl" id="sWords" data-page-node-id="dli0RV9Z8lHoQHnyyekBiF">0</div><div class="sl" data-page-node-id="lCOjhAwlcBZifGC3cSTYNu">已敲词</div></div>
+    <div class="stat" data-page-node-id="2Mpf82NYHSisbq1zkwwWfU"><div class="sv" id="sBest" data-page-node-id="o54YCQmCMaCqEYqnD4GIct">0</div><div class="sl" data-page-node-id="Pus7JaNOEHasxuwyZduydL">最长连击</div></div>
+  </div>
+
+  <div class="prog" data-page-node-id="oeiNmJuoToIhA2qhg99u6n"><i id="progBar" data-page-node-id="NZN6Ytti8e0hTKLgeb4Btj"></i></div>
+
+  <div class="combo" data-page-node-id="MBTF0mkdROjUYOOUdApiJC">
+    <div class="n zero" id="comboN" data-page-node-id="gMu0S4W3h5U7eCXvWDgEI3">0</div>
+    <div class="lab" data-page-node-id="STJDNyFW0CEHrG8KF0PVTs">COMBO</div>
+    <div class="mult" id="comboMult" data-page-node-id="nA0zkutWde5hQLgoCrRTNz">×1.0</div>
+  </div>
+
+  <div id="main" data-page-node-id="7gD5lOOX2AtYfxPb9ECoxz">
+    <div class="wordbox" id="wbox" data-page-node-id="yQHFbq98O3AbzVQ8ccylUC">
+      <div class="word" id="word" data-page-node-id="eerhfJ5f3FUkkJWrtcaaKj">press <span class="ch" data-page-node-id="iVaExazVgLSaUtZga65vAt">s</span>tart</div>
+      <div class="cn" id="cn"></div>
+    </div>
+    <div class="hint" data-page-node-id="olSdKFOcJUGKWHd1id6sa2">
+      <span class="deskonly"><kbd data-page-node-id="ARnBQAG2rOypLtuoyVndqM">Tab</kbd> 换词&ensp;·&ensp;<kbd data-page-node-id="LSbAQMHqa6uCk7jbqXF660">Esc</kbd> 跳过&ensp;·&ensp;<kbd data-page-node-id="VdkSeA8J2r80KAGdSDZ76E">Ctrl+R</kbd> 重置
+      &ensp;·&ensp;</span><span class="mobonly">点一下上面的词框唤起键盘&ensp;·&ensp;</span>连续敲错会断连击，声音音高随连击爬升
+      &ensp;·&ensp;可点「导入词库」粘贴自己的中英词表来练
+    </div>
+  </div>
+
+  <div id="done" data-page-node-id="aTFSQ2q5mn78pi0KXTIyjQ">
+    <div class="dt" data-page-node-id="m7rmHqdchpcnYwCAVfdHa8">SESSION DONE</div>
+    <div class="ds" data-page-node-id="W0cfTfNR5hN3gsA6H0f6WG">本轮完成</div>
+    <div class="dg" data-page-node-id="WaNUf68Y4GqdZHJGxAxBGk">
+      <div class="stat" data-page-node-id="T3qbY7YwKpfmPRp7cz97A9"><div class="sv c-cy" id="dAcc" data-page-node-id="EaR9E1rNtCaqa3dAxjUtPi">0%</div><div class="sl" data-page-node-id="rF3wjBAaVJDZgi11fjtaer">准确率</div></div>
+      <div class="stat" data-page-node-id="u6pzibcJvfq4M0Fq2SaADg"><div class="sv c-am" id="dWpm" data-page-node-id="GzunAOuDqB6Gi8MjOFDROK">0</div><div class="sl" data-page-node-id="I8ZshQh4QSG9WRJ7wuBAkX">WPM</div></div>
+      <div class="stat" data-page-node-id="otkyn19XZPVkBydVmG0rqu"><div class="sv c-vi" id="dWords" data-page-node-id="zu9B7itVO3RZoJAW2fI0dq">0</div><div class="sl" data-page-node-id="uiSMolZELSLsZulx7ZmHFK">词数</div></div>
+      <div class="stat" data-page-node-id="NB1mN897logYfNtyJZMJc2"><div class="sv c-bl" id="dCombo" data-page-node-id="ET2qc4vlPGWWAct52dOxaR">0</div><div class="sl" data-page-node-id="JUEcTTIxdpUPGHEp1XEx51">最长连击</div></div>
+      <div class="stat" data-page-node-id="jMGCK7eFeCtzwWfjLNaPE4"><div class="sv" id="dTime" data-page-node-id="ULjIqHxQyUivAbWwwN1pbk">0:00</div><div class="sl" data-page-node-id="kPcEuLmbTsGpyzvJYTD2Oq">用时</div></div>
+    </div>
+    <div class="dlist" id="dList"></div>
+    <button class="btn" id="btnAgain" style="margin-top:24px" data-page-node-id="87GgbpGtZqV6SzQEFE0RTI">再来一轮</button>
+  </div>
+
+  <div class="ctl" data-page-node-id="QqghWIXomVeIOx5M4gvdnE">
+    <select id="selBank" data-page-node-id="GGyNWbRBl58XQdyBiyepzM">
+      <option value="basic" data-page-node-id="EhkNpMI34abcz5h9XK9rkV">基础 · 日常高频</option>
+      <option value="mid" data-page-node-id="0p372iexA7mLIQuKgMHJLR">进阶 · 四六级</option>
+      <option value="hard" data-page-node-id="3SalBH29t1aGKVwcAzUDmN">学术 · 雅思托福</option>
+      <option value="mix" data-page-node-id="T80PZ0EJOZQrD7EG6vHu6N">混合 · 全部</option>
+      <option value="mine" id="optMine">我的词库 · 0 词</option>
+    </select>
+    <div class="themes" id="themeBar">
+      <button class="th on" data-t="dark" type="button" title="深色"><i class="dot d-dark"></i>深色</button>
+      <button class="th" data-t="white" type="button" title="白色"><i class="dot d-white"></i>白色</button>
+      <button class="th" data-t="green" type="button" title="绿色"><i class="dot d-green"></i>绿色</button>
+    </div>
+    <button class="btn g" id="btnImport" title="粘贴中英词表">导入词库</button>
+    <label class="sw" data-page-node-id="zHHWKPGeOHf7g94VAygFV0"><input type="checkbox" id="cbSound" checked data-page-node-id="LBkPDU44I9GMeAVoPRWk5b">音效</label>
+    <label class="sw" data-page-node-id="AgObPGjdOWJ8em9cRfIgJq"><input type="checkbox" id="cbShow" checked data-page-node-id="mfj5rqFQ51pYT4c8jJNcQo">遮蔽后续字母</label>
+    <label class="sw" data-page-node-id="chugDiIyED4firMYNcuM16"><input type="checkbox" id="cbTTS" checked data-page-node-id="FzXij7KnlOpm0kCICihA1G">朗读</label>
+    <span id="ttsVol" class="ttsvol" title="朗读音量：连击越高越响；点一下可重听当前词">🔊 55%</span>
+    <span id="ttsBadge" class="ttsbadge hide" title="点一下用手势重试朗读"></span>
+    <!-- 音频被浏览器挡住时才出现：给一个手动解锁的入口。
+         只在「已经尝试初始化但没跑起来」时显示，桌面正常情况永远不出现。 -->
+    <span id="auBadge" class="aubadge hide" title="浏览器拦住了音频（移动端常见），点这里手动开启">🔇 点此开启声音</span>
+    <label class="sw"><input type="checkbox" id="cbCn" checked>中文释义</label>
+    <div class="spacer" data-page-node-id="lLvu54k21Cm82ZBA6tK3mQ"></div>
+    <button class="btn g" id="btnNext" data-page-node-id="8OCdzDovyEsyoaK1L3i0tf">换词</button>
+    <button class="btn g" id="btnReset" data-page-node-id="t6CldFv3UKJ55rHUVEnaIR">重置</button>
+  </div>
+
+  <div class="importer" id="importer">
+    <h3>导入中英词库 · IMPORT WORDS</h3>
+    <div class="ihint">每行一个词，支持这些写法（中文可省略）：</div>
+    <pre class="iex">apple 苹果
+"hello world" 你好 世界
+banana=香蕉
+China Telecom　n. 中国电信
+　　← 全角空格分隔、词典词性标记 n./v. 都能正确识别</pre>
+    <textarea id="taWords" placeholder="在这里粘贴或输入你的词表…"></textarea>
+    <div class="ihint" style="margin:6px 0 0">输入框内：Esc 收起面板 · Ctrl/⌘+Enter 直接导入 · 编辑期间计时暂停</div>
+    <div class="ibrow">
+      <button class="btn" id="btnDoImport">导入并使用</button>
+      <button class="btn g" id="btnExport" title="把当前词库导出成 words.txt 格式的文本，可复制后交给我同步到线上">导出当前词库</button>
+      <button class="btn g" id="btnClearMy">清空我的词库</button>
+      <button class="btn g" id="btnCloseImport">收起</button>
+      <span class="imsg" id="impMsg"></span>
+    </div>
+  </div>
+
+  <div class="wrong" data-page-node-id="C4zt8xN5DcwKWLhASpPAyo">
+    <h3 data-page-node-id="EGqRetO8QKIcpF1rm42vVE"><span data-page-node-id="AvSgeIm4AixcCbUlTg7nFT">易错词 · WRONG BOOK</span><span id="wCount" style="color:var(--tx3)" data-page-node-id="Wx8bRXgE6DskYMM3yR0Df4">0</span></h3>
+    <div class="wlist" id="wlist" data-page-node-id="kGNL0EfVc0zMDgt0mbC9IU"><span class="empty" data-page-node-id="HJ7h0RkHJru3WViMdy75FH">还没有错词，继续保持</span></div>
+  </div>
+
+  <div class="board" id="leaderboard">
+    <h3>排行榜 · LEADERBOARD <span id="boardBank" class="bbank"></span></h3>
+    <div class="bjoin">
+      <label class="sw"><input type="checkbox" id="cbJoin">加入排名</label>
+      <input id="nick" class="nick" maxlength="16" placeholder="必填：你的昵称（不与榜上重名）" disabled>
+      <span id="nickMsg" class="nickmsg"></span>
+    </div>
+    <div class="blist" id="blist"><span class="empty">还没有人上榜，快来抢第一</span></div>
+    <div class="bnote" id="boardNote">按用时从短到长排名 · 仅显示前 20 名 · 成绩保存在云端</div>
+  </div>
+
+</div>
+</div>
+
+<!-- 手机软键盘接入口：靠它唤起系统键盘并逐字接管输入。
+     off/autocorrect 这些属性必须齐全，否则输入法会自作主张改大小写、做联想，
+     把 "wi-fi" 变成 "Wi-Fi" 或者攒着不提交，逐字判定就废了。 -->
+<input id="kb" type="text" autocomplete="off" autocorrect="off" autocapitalize="off"
+       spellcheck="false" inputmode="text" aria-label="打字输入" tabindex="-1">
+
+<script>
+"use strict";
+(function(){
+
+/* ============================================================
+   反馈参数 —— 直接从 VOID LANCE 搬过来
+   同一套数值，换一个领域验证能不能迁移
+   ============================================================ */
+const FB={
+  shakeFire   : 0.35,   // 每次正确击键（游戏里=开枪0.55，按键密度更高所以调低）
+  shakeWord   : 1.6,    // 完成一个词
+  shakeError  : 7,      // 打错（轻）
+  shakeBreak  : 13,     // 连击断裂（重）
+  hitstopWord : 0.05,   // 顿帧：完成一词时定格
+  flashChars  : 0.18,   // 字符弹跳动画时长
+  popScale    : 1.30,   // combo 数字弹跳
+  comboMax    : 60,
+  multStep    : 0.08    // 倍率步进
+};
+
+/* ================= word banks ================= */
+const BANK={
+basic:[
+  {en:"the",cn:"这个；这"},
+  {en:"and",cn:"和；并且"},
+  {en:"that",cn:"那个；那"},
+  {en:"have",cn:"有；拥有"},
+  {en:"for",cn:"为了；对于"},
+  {en:"not",cn:"不；不是"},
+  {en:"with",cn:"和…一起；用"},
+  {en:"you",cn:"你；你们"},
+  {en:"this",cn:"这个"},
+  {en:"but",cn:"但是"},
+  {en:"his",cn:"他的"},
+  {en:"from",cn:"从；来自"},
+  {en:"they",cn:"他们"},
+  {en:"say",cn:"说；讲"},
+  {en:"her",cn:"她的；她"},
+  {en:"she",cn:"她；女性"},
+  {en:"will",cn:"将要；会"},
+  {en:"one",cn:"一；一个"},
+  {en:"all",cn:"全部；所有的"},
+  {en:"would",cn:"将会；想要"},
+  {en:"there",cn:"那里；在那里"},
+  {en:"their",cn:"他们的"},
+  {en:"what",cn:"什么"},
+  {en:"about",cn:"关于；大约"},
+  {en:"who",cn:"谁"},
+  {en:"get",cn:"得到；获取"},
+  {en:"which",cn:"哪一个"},
+  {en:"when",cn:"什么时候"},
+  {en:"make",cn:"制作；使"},
+  {en:"can",cn:"能够；可以"},
+  {en:"like",cn:"喜欢；像"},
+  {en:"time",cn:"时间；次"},
+  {en:"just",cn:"只是；刚刚"},
+  {en:"him",cn:"他"},
+  {en:"know",cn:"知道；了解"},
+  {en:"take",cn:"拿；花费"},
+  {en:"into",cn:"进入；到…里"},
+  {en:"your",cn:"你的"},
+  {en:"some",cn:"一些"},
+  {en:"them",cn:"他们（宾格）"},
+  {en:"than",cn:"比"},
+  {en:"then",cn:"然后"},
+  {en:"now",cn:"现在"},
+  {en:"look",cn:"看；看起来"},
+  {en:"only",cn:"只有；仅仅"},
+  {en:"come",cn:"来；到来"},
+  {en:"its",cn:"它的"},
+  {en:"also",cn:"也；此外"},
+  {en:"back",cn:"回；后面"},
+  {en:"after",cn:"在…之后"},
+  {en:"use",cn:"使用；利用"},
+  {en:"two",cn:"二；两个"},
+  {en:"how",cn:"如何；怎样"},
+  {en:"our",cn:"我们的"},
+  {en:"work",cn:"工作；作品"},
+  {en:"first",cn:"第一；首先"},
+  {en:"well",cn:"好地；井"},
+  {en:"way",cn:"方法；道路"},
+  {en:"even",cn:"甚至；均匀的"},
+  {en:"new",cn:"新的"},
+  {en:"want",cn:"想要；需要"},
+  {en:"because",cn:"因为"},
+  {en:"any",cn:"任何；一些"},
+  {en:"these",cn:"这些"},
+  {en:"give",cn:"给；提供"},
+  {en:"day",cn:"天；白天"},
+  {en:"most",cn:"最多；大多数"},
+  {en:"music",cn:"音乐"},
+  {en:"class",cn:"班级；课"},
+  {en:"water",cn:"水"},
+  {en:"start",cn:"开始"},
+  {en:"every",cn:"每一个"},
+  {en:"world",cn:"世界"},
+  {en:"number",cn:"数字；号码"},
+  {en:"part",cn:"部分；参与"},
+  {en:"turn",cn:"转动；轮到"},
+  {en:"real",cn:"真实的"},
+  {en:"left",cn:"左边；离开的"},
+  {en:"place",cn:"地方；放置"},
+  {en:"few",cn:"很少；几个"},
+  {en:"while",cn:"当…时；然而"},
+  {en:"along",cn:"沿着；一起"},
+  {en:"move",cn:"移动；感动"},
+  {en:"live",cn:"居住；活的"},
+  {en:"open",cn:"打开；开着的"},
+  {en:"close",cn:"关闭；近的"},
+  {en:"play",cn:"玩；播放；戏剧"},
+  {en:"learn",cn:"学习；得知"},
+  {en:"teach",cn:"教；教导"},
+  {en:"read",cn:"读；阅读"},
+  {en:"write",cn:"写；书写"},
+  {en:"speak",cn:"说；讲（语言）"},
+  {en:"read",cn:"读；阅读"}],
+
+mid:[
+  {en:"achieve",cn:"实现；达到"},
+  {en:"approach",cn:"方法；接近"},
+  {en:"benefit",cn:"益处；使受益"},
+  {en:"concept",cn:"概念；观念"},
+  {en:"consist",cn:"组成；在于"},
+  {en:"determine",cn:"决定；确定"},
+  {en:"develop",cn:"发展；开发"},
+  {en:"economy",cn:"经济；节约"},
+  {en:"emphasis",cn:"强调；重点"},
+  {en:"environment",cn:"环境；周围状况"},
+  {en:"establish",cn:"建立；确立"},
+  {en:"evidence",cn:"证据；迹象"},
+  {en:"factor",cn:"因素；要素"},
+  {en:"feature",cn:"特征；特色"},
+  {en:"identify",cn:"识别；确认"},
+  {en:"impact",cn:"影响；冲击"},
+  {en:"implement",cn:"实施；执行"},
+  {en:"improve",cn:"改善；提高"},
+  {en:"indicate",cn:"表明；指出"},
+  {en:"individual",cn:"个人的；个体"},
+  {en:"influence",cn:"影响；影响力"},
+  {en:"maintain",cn:"维持；保养"},
+  {en:"measure",cn:"措施；测量"},
+  {en:"method",cn:"方法"},
+  {en:"obtain",cn:"获得；得到"},
+  {en:"occur",cn:"发生；出现"},
+  {en:"opportunity",cn:"机会；时机"},
+  {en:"participate",cn:"参与；参加"},
+  {en:"particular",cn:"特定的；特别"},
+  {en:"perform",cn:"执行；表演"},
+  {en:"policy",cn:"政策；方针"},
+  {en:"principle",cn:"原则；原理"},
+  {en:"process",cn:"过程；程序"},
+  {en:"quality",cn:"质量；品质"},
+  {en:"require",cn:"需要；要求"},
+  {en:"research",cn:"研究；调查"},
+  {en:"resource",cn:"资源；资料"},
+  {en:"significant",cn:"重要的；显著的"},
+  {en:"similar",cn:"相似的；类似的"},
+  {en:"situation",cn:"情况；处境"},
+  {en:"specific",cn:"具体的；特定的"},
+  {en:"structure",cn:"结构；构造"},
+  {en:"technology",cn:"技术；科技"},
+  {en:"technique",cn:"技术；技巧"},
+  {en:"transfer",cn:"转移；调动"},
+  {en:"various",cn:"各种各样的"},
+  {en:"available",cn:"可获得的；有空的"},
+  {en:"capacity",cn:"容量；能力"},
+  {en:"category",cn:"类别；范畴"},
+  {en:"community",cn:"社区；群体"},
+  {en:"computer",cn:"计算机；电脑"},
+  {en:"consider",cn:"考虑；认为"},
+  {en:"continue",cn:"继续；持续"},
+  {en:"critical",cn:"关键的；批判的"},
+  {en:"decision",cn:"决定；决策"},
+  {en:"design",cn:"设计；构思"},
+  {en:"economic",cn:"经济的；经济学的"},
+  {en:"effective",cn:"有效的；生效的"},
+  {en:"emphasize",cn:"强调；着重"},
+  {en:"encourage",cn:"鼓励；促进"},
+  {en:"especially",cn:"尤其；特别是"},
+  {en:"establish",cn:"建立；确立"},
+  {en:"evaluate",cn:"评价；评估"},
+  {en:"evidence",cn:"证据；迹象"},
+  {en:"financial",cn:"金融的；财政的"},
+  {en:"flexible",cn:"灵活的；可弯曲的"},
+  {en:"function",cn:"功能；运作"},
+  {en:"generate",cn:"产生；生成"},
+  {en:"identify",cn:"识别；确认"},
+  {en:"impact",cn:"影响；冲击"},
+  {en:"include",cn:"包括；包含"},
+  {en:"indicate",cn:"表明；指出"},
+  {en:"individual",cn:"个人的；个体"},
+  {en:"influence",cn:"影响；影响力"},
+  {en:"necessary",cn:"必要的；必需的"},
+  {en:"negotiate",cn:"谈判；协商"},
+  {en:"perspective",cn:"观点；视角"},
+  {en:"potential",cn:"潜在的；潜力"},
+  {en:"practical",cn:"实际的；实用的"},
+  {en:"previous",cn:"先前的；以前的"},
+  {en:"primary",cn:"主要的；初级的"},
+  {en:"principle",cn:"原则；原理"},
+  {en:"professional",cn:"专业的；专业人士"},
+  {en:"promote",cn:"促进；推广"},
+  {en:"purchase",cn:"购买；采购"},
+  {en:"recent",cn:"最近的；近来的"},
+  {en:"relevant",cn:"相关的；切题的"},
+  {en:"reliable",cn:"可靠的；可信赖的"},
+  {en:"require",cn:"需要；要求"},
+  {en:"significant",cn:"重要的；显著的"},
+  {en:"specific",cn:"具体的；特定的"},
+  {en:"strategy",cn:"策略；战略"},
+  {en:"structure",cn:"结构；构造"},
+  {en:"sustainable",cn:"可持续的"},
+  {en:"technique",cn:"技术；技巧"},
+  {en:"technology",cn:"技术；科技"},
+  {en:"technique",cn:"技术；技巧"},
+  {en:"unique",cn:"独特的；唯一的"},
+  {en:"various",cn:"各种各样的"},
+  {en:"adequate",cn:"足够的；适当的"},
+  {en:"annual",cn:"每年的；年度的"},
+  {en:"apparent",cn:"明显的；表面上的"},
+  {en:"appropriate",cn:"合适的；恰当的"},
+  {en:"approximately",cn:"大约；近似地"},
+  {en:"available",cn:"可获得的；有空的"},
+  {en:"capacity",cn:"容量；能力"},
+  {en:"component",cn:"成分；部件"},
+  {en:"consequence",cn:"结果；后果"},
+  {en:"considerable",cn:"相当大的；重要的"},
+  {en:"constitute",cn:"构成；组成"},
+  {en:"continuous",cn:"连续的；不间断的"},
+  {en:"controversial",cn:"有争议的"},
+  {en:"controversy",cn:"争论；争议"}],
+
+hard:[
+  {en:"acknowledge",cn:"承认；认可"},
+  {en:"ambiguous",cn:"模棱两可的；含糊的"},
+  {en:"anticipate",cn:"预期；预料"},
+  {en:"apparent",cn:"明显的；表面上的"},
+  {en:"arbitrary",cn:"任意的；武断的"},
+  {en:"aspiration",cn:"抱负；渴望"},
+  {en:"assumptions",cn:"假设；臆断"},
+  {en:"aesthetic",cn:"美学的；审美的"},
+  {en:"autonomy",cn:"自治；自主权"},
+  {en:"bias",cn:"偏见；偏差"},
+  {en:"coherent",cn:"连贯的；一致的"},
+  {en:"coincidence",cn:"巧合；同时发生"},
+  {en:"collaborate",cn:"合作；协作"},
+  {en:"commodity",cn:"商品；日用品"},
+  {en:"compatible",cn:"兼容的；相容的"},
+  {en:"complement",cn:"补充；补足"},
+  {en:"comprehensive",cn:"综合的；全面的"},
+  {en:"compromise",cn:"妥协；折中"},
+  {en:"conceive",cn:"构想；设想"},
+  {en:"consensus",cn:"共识；一致意见"},
+  {en:"consequently",cn:"因此；结果"},
+  {en:"considerable",cn:"相当大的；重要的"},
+  {en:"constitute",cn:"构成；组成"},
+  {en:"contemporary",cn:"当代的；同时代的"},
+  {en:"controversial",cn:"有争议的"},
+  {en:"convergence",cn:"趋同；汇聚"},
+  {en:"correlate",cn:"相关；关联"},
+  {en:"credibility",cn:"可信度；信誉"},
+  {en:"criterion",cn:"标准；准则"},
+  {en:"crucial",cn:"关键的；至关重要的"},
+  {en:"cumulative",cn:"累积的；渐增的"},
+  {en:"decisive",cn:"决定性的；果断的"},
+  {en:"deliberate",cn:"故意的；深思熟虑的"},
+  {en:"diminish",cn:"减少；削弱"},
+  {en:"discretion",cn:"谨慎；自由裁量"},
+  {en:"disparity",cn:"差异；悬殊"},
+  {en:"disruptive",cn:"破坏性的；扰乱的"},
+  {en:"distinction",cn:"区别；差别"},
+  {en:"diversify",cn:"多样化；使分散"},
+  {en:"dominant",cn:"占主导地位的"},
+  {en:"durability",cn:"耐久性；持久"},
+  {en:"elaborate",cn:"详尽的；详细说明"},
+  {en:"eligibility",cn:"资格；合格"},
+  {en:"embody",cn:"体现；包含"},
+  {en:"empirical",cn:"经验的；实证的"},
+  {en:"endeavor",cn:"努力；尽力"},
+  {en:"entrenched",cn:"根深蒂固的；确立的"},
+  {en:"equilibrium",cn:"平衡；均衡"},
+  {en:"exemplify",cn:"例证；是…的典型"},
+  {en:"exert",cn:"施加；运用"},
+  {en:"exhaustive",cn:"详尽无遗的；彻底的"},
+  {en:"exponential",cn:"指数的；指数增长"},
+  {en:"feasible",cn:"可行的；行得通的"},
+  {en:"fluctuate",cn:"波动；起伏"},
+  {en:"formidable",cn:"强大的；令人敬畏"},
+  {en:"fragility",cn:"脆弱；易碎"},
+  {en:"heterogeneous",cn:"异质的；不均匀的"},
+  {en:"hypothesis",cn:"假设；假说"},
+  {en:"ideology",cn:"意识形态；思想体系"},
+  {en:"imminent",cn:"即将发生的；迫近的"},
+  {en:"impediment",cn:"障碍；阻碍"},
+  {en:"implication",cn:"含义；影响"},
+  {en:"incentive",cn:"激励；诱因"},
+  {en:"inconsistency",cn:"不一致；矛盾"},
+  {en:"indispensable",cn:"不可或缺的；必需的"},
+  {en:"inevitable",cn:"不可避免的；必然的"},
+  {en:"infrastructure",cn:"基础设施"},
+  {en:"inherent",cn:"固有的；内在的"},
+  {en:"inhibition",cn:"抑制；约束"},
+  {en:"innovative",cn:"创新的；革新的"},
+  {en:"integrity",cn:"正直；完整"},
+  {en:"intrinsic",cn:"内在的；本质的"},
+  {en:"invariate",cn:"不变的；恒定的"},
+  {en:"legitimate",cn:"合法的；正当的"},
+  {en:"magnitude",cn:"巨大；量级"},
+  {en:"manifestation",cn:"表现；显示"},
+  {en:"marginal",cn:"边缘的；微不足道的"},
+  {en:"methodology",cn:"方法论"},
+  {en:"mitigate",cn:"减轻；缓和"},
+  {en:"negligible",cn:"微不足道的"},
+  {en:"nonetheless",cn:"尽管如此"},
+  {en:"notion",cn:"概念；观念"},
+  {en:"nuance",cn:"细微差别"},
+  {en:"obscure",cn:"模糊的；使模糊"},
+  {en:"obsolete",cn:"过时的；废弃的"},
+  {en:"paradigm",cn:"范式；典范"},
+  {en:"parameter",cn:"参数；限制因素"},
+  {en:"paramount",cn:"至高无上的；首要的"},
+  {en:"parity",cn:"平等；同等"},
+  {en:"pervasive",cn:"普遍的；弥漫的"},
+  {en:"phenomenon",cn:"现象"},
+  {en:"plausible",cn:"貌似合理的"},
+  {en:"preliminary",cn:"初步的；预备的"},
+  {en:"premise",cn:"前提；假设"},
+  {en:"prerequisite",cn:"先决条件；必要条件"},
+  {en:"presumption",cn:"推测；假定"},
+  {en:"proliferation",cn:"扩散；激增"},
+  {en:"prominent",cn:"突出的；著名的"},
+  {en:"propagate",cn:"传播；繁殖"},
+  {en:"provisional",cn:"临时的；暂定的"},
+  {en:"quintessential",cn:"典型的；精髓的"},
+  {en:"reconcile",cn:"调和；使一致"},
+  {en:"recur",cn:"再发生；重现"},
+  {en:"redundant",cn:"多余的；冗余的"},
+  {en:"refute",cn:"驳斥；反驳"},
+  {en:"reinforce",cn:"加强；强化"},
+  {en:"reluctance",cn:"不情愿；勉强"},
+  {en:"resilience",cn:"韧性；恢复力"},
+  {en:"retrospect",cn:"回顾；追溯"},
+  {en:"rigorous",cn:"严格的；严谨的"},
+  {en:"robust",cn:"强健的；稳健的"},
+  {en:"saturation",cn:"饱和；充分渗透"},
+  {en:"scrutiny",cn:"详细审查"},
+  {en:"simultaneous",cn:"同时发生的"},
+  {en:"skepticism",cn:"怀疑；怀疑态度"},
+  {en:"solitude",cn:"孤独；独处"},
+  {en:"sparse",cn:"稀疏的；稀少的"},
+  {en:"spontaneous",cn:"自发的；自然的"},
+  {en:"stagnation",cn:"停滞；不景气"},
+  {en:"stringent",cn:"严格的；严厉的"},
+  {en:"subtle",cn:"微妙的；细微的"},
+  {en:"superficial",cn:"表面的；肤浅的"},
+  {en:"surveillance",cn:"监视；监控制"},
+  {en:"synthesis",cn:"综合；合成"},
+  {en:"synthetic",cn:"合成的；人造的"},
+  {en:"tangible",cn:"有形的；可触摸的"},
+  {en:"tentative",cn:"暂定的；试探性的"},
+  {en:"threshold",cn:"门槛；临界值"},
+  {en:"trajectory",cn:"轨迹；弹道"},
+  {en:"transcend",cn:"超越；胜过"},
+  {en:"traverse",cn:"穿过；遍历"},
+  {en:"unanimous",cn:"一致同意的；全体的"},
+  {en:"underlying",cn:"潜在的；根本的"},
+  {en:"unprecedented",cn:"前所未有的"},
+  {en:"versatile",cn:"多才多艺的；多用途的"},
+  {en:"vicissitude",cn:"变迁；盛衰"},
+  {en:"vigorous",cn:"有力的；精力充沛的"},
+  {en:"volatile",cn:"易变的；不稳定的"},
+  {en:"ubiquitous",cn:"无处不在的"},
+  {en:"unravel",cn:"解开；阐明"},
+  {en:"warrant",cn:"使有必要；正当理由"}]
+};
+
+/* ================= state ================= */
+const S={
+  word:"", cn:"", item:null, typed:0, done:false,
+  combo:0, best:0,
+  round:[],               // 本轮打过的英文词（首次出现顺序），结算回顾用
+  roundN:{},             // word -> 本轮被抽中的次数，结算算"覆盖率"用
+  pool:[], poolIdx:0, poolLen:0,   // 本轮不放回抽样的词池与游标
+  keystrokes:0, correct:0,
+  wordsDone:0,
+  t0:0, running:false,
+  holdAt:0,           // 打开导入面板的时刻；>0 表示计时被挂起（编辑词库不该算进 WPM）
+  wrong:{},           // word -> {n, chars:{wrong:correct}}
+  shake:0,
+  bank:"basic"
+};
+
+/* ================= 抽词规则：不放回抽样 =================
+   需求：每轮从当前词库洗牌后依次抽取，已选过的词本轮回不再出现。
+   一轮的长度 = min(词库大小, 30)：
+     - 词库 ≤30 词：把词库里所有词各打一遍就算一轮（满足「没超过30词就全过一遍」）；
+     - 词库 >30 词：仍取 30 个不重复词。
+   这是结构性去重——池子抽空才结束，不可能重复，所以旧的「加权降重」和「词频」按键不再需要。 */
+const ROUND_CAP=30;
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    const t=a[i]; a[i]=a[j]; a[j]=t;
+  }
+  return a;
+}
+function buildPool(){
+  /* 先按 en 去重再洗牌：内置库里同一个词会跨难度重复出现（basic 有 2 次 read，
+     mid 有 17 个），「混合·全部」更是三库拼接 —— 不去重的话「不放回」照样能
+     在一轮里把同一个词抽到两次，承诺就落空了。 */
+  const seen=new Set(), list=[];
+  for(const it of bankList()){
+    if(seen.has(it.en)) continue;
+    seen.add(it.en); list.push(it);
+  }
+  S.pool=shuffle(list).slice(0, ROUND_CAP);
+  S.poolIdx=0;
+  S.poolLen=S.pool.length;
+}
+function pickWord(){
+  if(S.poolIdx>=S.poolLen){ finishSession(); return; }   // 池空 → 本轮结束
+  const w=S.pool[S.poolIdx++];
+  S.item=w; S.word=w.en; S.cn=w.cn||""; S.typed=0;
+  if(S.round.indexOf(S.word)<0) S.round.push(S.word);
+  S.roundN[S.word]=(S.roundN[S.word]||0)+1;
+  renderWord(); renderProg();
+}
+
+/* ================= 自定义词库（用户导入）=================
+   存在 localStorage，刷新不丢。解析器接受多行文本，每行一个词：
+     apple 苹果
+     "hello world" 你好 世界
+     banana=香蕉                       ← = | tab : 等分隔符都认
+     China Telecom　n. 中国电信        ← 全角空格分隔 + 词性标记，词典导出的常见格式
+   中文可省略（只有英文也能练，只是没有释义）。 */
+const MY_KEY="keystroke.mine.v1";
+const MY={list:[], raw:"", name:"我的词库"};
+
+/* 【分隔符的坑 ——踩过两次的坑】
+   词典/教材导出的词表里，分隔符常常是「全角空格」U+3000 而不是普通空格。
+   原来的 CJK 正则写作 [\u3000-\u303f...]，把 U+3000（标点区第一个码位）
+   连同 U+3001 顿号一起当成了「中文字符」，于是：
+     "China Telecom　n. 中国电信"
+   在全角空格处就被判定为「英文结束」，结果 en="china"、cn="Telecomn. 中国电信"——
+   词组被从中间劈开，还顺带触发 peelTailUpper 把 Fi 当大写尾巴剥给中文。
+   修法：先用 RE_SEP 把所有空白（含全角空格）统一成普通空格做归一化，
+   再判断英文段的结束位置。CJK 只保留真正的汉字与中文标点。 */
+const RE_WS=/[\s\u00a0\u3000\u2000-\u200b\ufeff]+/g;
+const CJK=/[\u4e00-\u9fff\u3400-\u4dbf\u3001-\u303f\uff01-\uff65]/;
+/* 词性标记：词典导出常写成 "n. 中国电信" / "v. 走"。这些不是英文单词的一部分，
+   要从英文段尾部剥掉（否则会变成 "china telecom n" 这种要打的词）。 */
+const RE_POS=/\s+(?:n|v|vt|vi|adj|adv|prep|conj|pron|num|art|int|det|aux|abbr|modal)\s*\.\s*$/i;
+/* 释义【开头】的词性标记。允许前导 / , ; 、 | —— 复合词性连写（v./n. 查询）
+   剥掉第一段之后，第二段前面就剩一个斜杠，不认它就永远剥不干净。 */
+const RE_POSHEAD=/^\s*[\/,;、|]?\s*(?:n|v|vt|vi|adj|adv|prep|conj|pron|num|art|int|det|aux|abbr|modal)\s*\.\s*/i;
+/* 音标 /ˈkiːkɑːrd ˈɛntri dɔːr/：成对斜杠之间的内容整段去掉 */
+const RE_IPA=/\/[^/]*\/\s*/g;
+/* peelTailUpper：x-ray X射线 里的尾部 X 是释义开头，不是英文。
+   【这个判断极易误伤，三个闸门缺一不可 —— 踩过一次】
+   旧写法 /([A-Z][A-Za-z0-9]*)$/ 会咬掉英文段末尾【任何一个大写开头的词】，于是：
+     "China Telecom　n. 中国电信" → en="China" cn="Telecom中国电信"
+     "New York　n. 纽约"          → en="New"   cn="York纽约"
+     "Wi-Fi　n. 无线网络"          → en="Wi-"   cn="Fi无线网络"
+   Telecom / York / Angeles / Fi 全是合法英文一部分，却被当成中文前缀剥走了。
+   收紧成三道闸：
+     ① 全大写（USB/NASA）是缩写，不动；
+     ② 只认「空格 + 单个大写字母」的尾巴（X射线 / T型 Account），
+        多字母的大写词一律留给英文；
+     ③ 剥掉后英文必须只剩一个词，且中文侧本身不含拉丁字母
+        （Wi-Fi　n. 无线网络（Wi-Fi） / Vitamin C 维生素C 这类必须放行）。 */
+function peelTailUpper(en, cn){
+  if(!/[a-z]/.test(en)) return null;               // ① 全大写 → 缩写，不动
+  if(/[A-Za-z]/.test(cn||"")) return null;         // ③ 中文侧已含拉丁字母，别抢
+  const m=en.match(/\s([A-Z])$/);                  // ② 只认单字母尾巴
+  if(!m) return null;
+  const head=en.slice(0,en.length-1).trim();
+  if(!head || /\s/.test(head)) return null;        // ③ 剥完英文得只剩一个词
+  return {en:head, tail:m[1]};
+}
+function splitLine(raw){
+  /* 归一化：全角空格 / 不换行空格 / 细空格 / BOM 一律换成普通空格，
+     连续空白压成一个。必须在判断英文段边界之前做完。 */
+  const ln=String(raw||"").replace(RE_WS," ").trim();
+  if(!ln) return null;
+  /* 1. 引号包住整个词组："hello world" 你好 世界 */
+  const q=ln.match(/^"([^"]+)"\s*(.*)$/);
+  if(q) return {en:q[1], cn:q[2]};
+  /* 2. 显式分隔符（制表符已归一化成空格，这里只剩 = : ：）。
+        分隔符【必须挨着英文段】，否则 "China Telecom n. 中国电信" 里的
+        "n." 会被误当成边界。 */
+  const sp=ln.match(/^([a-zA-Z][a-zA-Z' -]*?)\s*[:=：]\s*(.+)$/);
+  if(sp) return {en:sp[1], cn:sp[2]};
+  /* 3. 找第一个真正的汉字/中文标点，它之前全是英文 */
+  let i=0;
+  while(i<ln.length && !CJK.test(ln[i])) i++;
+  let en0=ln.slice(0,i), cn0=ln.slice(i).trim();
+  /* 3a. 剥掉英文段尾部的词性标记："china telecom n." → "china telecom" */
+  en0=en0.replace(RE_POS,"").trim();
+  /* 3b. 只在极窄的条件下剥尾部单字母（x-ray + X射线 这类），放回中文前面 */
+  const pk=peelTailUpper(en0, cn0);
+  if(pk){ en0=pk.en; cn0=pk.tail+cn0; }
+  return {en:en0, cn:cn0};
+}
+/* 词条清洗：英文降小写、只留允许打的字符；中文去掉残留分隔符。
+   导入面板与外挂词表 words.txt 共用这一套，避免两处规则走偏。 */
+function normEntry(sp){
+  if(!sp) return null;
+  const en=(sp.en||"").toLowerCase().replace(/[^a-z' -]/g,"")
+    .replace(/\s+/g," ")                 // 连续空格归一：目标里连着两个空格位没法打
+    .trim();                              // 首尾空格去掉：词组不该以空格开头/结尾
+  if(!en || !/[a-z]/.test(en)) return null;
+  /* 释义清洗三段：先去音标，再【循环】剥词性，最后扫残留分隔符。
+     为什么要循环：词典导出的复合词性会连写（v./n. 查询、adj./n. 国内的），
+     只剥一次会留下 "/n. 查询" 这种半截；循环到不再变化为止才干净。 */
+  let cn=String(sp.cn||"").replace(RE_IPA,"");          // 音标 /ˈkiːkɑːrd ˈɛntri dɔːr/
+  let prev;
+  do{
+    prev=cn;
+    cn=cn.replace(RE_POSHEAD,"").replace(RE_IPA,"");    // 词性允许前导 / , ; 、 |（v./n. 这类连写）
+  }while(cn!==prev);
+  cn=cn.replace(/^[\s:=：\t/,;、|]+/,"").trim();         // 残留分隔符
+  return {en, cn};
+}
+function parseMyWords(text){
+  const out=[], seen=new Set();
+  const lines=String(text||"").split(/\r?\n/);
+  for(let ln of lines){
+    ln=String(ln||"").trim();
+    if(!ln) continue;
+    const it=normEntry(splitLine(ln));
+    if(!it) continue;
+    if(seen.has(it.en)) continue;          // 去重：同一英文只留第一条
+    seen.add(it.en);
+    out.push(it);
+  }
+  return out;
+}
+
+/* ================= 外挂词表 words.txt =================
+   内置三库是硬编码的，改一个词要动整个 HTML、还得重新发布页面本体。
+   把词表抽成同目录的 words.txt 之后：**改词库 = 改这个 txt**，发布时一起传上去即可，
+   线上的所有人（包括你自己换设备打开）拿到的都是同一份词库。
+   格式很宽容：
+       # 分类名            ← 以 # 开头的行是分类名，之后的词条归到这个分类
+       apple 苹果          ← 英文 + 中文，分隔符可以是空格/制表符/全角空格/=/:/：
+       "ice cream" 冰淇淋  ← 带空格的词组
+       Wi-Fi　n. 无线网络  ← 词典导出格式（全角空格 + 词性标记）也认
+   没有 # 的行默认归入「外挂词库」。空行跳过。
+   注意：直接双击打开本地文件（file://）时 fetch 会被跨域拦掉，这里静默跳过，
+   内置词库照常能用 —— 只有发布到线上才会加载外挂词表。 */
+const EXT_PREFIX="x_";            // 外挂分类的 key 前缀，避免与 basic/mid/hard 撞名
+function parseExtWords(text){
+  const cats=[];
+  let cur=null;
+  for(let raw of String(text||"").split(/\r?\n/)){
+    const ln=String(raw||"").trim();
+    if(!ln) continue;
+    if(ln.charAt(0)==="#"){                       // # 开头：分类名
+      const nm=ln.slice(1).trim();
+      /* ## 或 #--- 开头的是注释行（不是分类），保持当前分类不变 */
+      if(!nm || nm.charAt(0)==="#" || nm.charAt(0)==="-") continue;
+      cur={name:nm, list:[]};
+      cats.push(cur);
+      continue;
+    }
+    if(!cur){ cur={name:"外挂词库", list:[]}; cats.push(cur); }
+    const it=normEntry(splitLine(ln));
+    if(!it) continue;
+    if(cur.list.some(x=>x.en===it.en)) continue;   // 分类内去重
+    cur.list.push(it);
+  }
+  return cats.filter(c=>c.list.length);
+}
+function addExtBanks(cats){
+  const sel=$id("selBank"), mine=$id("optMine");
+  let n=0;
+  cats.forEach((c,i)=>{
+    /* key 用【分类名】而不是序号 x_N：序号会随 words.txt 里分类的增减/移动整体漂移，
+       已提交的成绩就错跑到别的榜上（2026-10-14 踩过：在文件顶部插入新分类，全部后移一位）。
+       分类名稳定不变，而且排行榜头部显示的就是分类名（boardLabel 直接返回 key）。
+       仅当撞名（与内置 basic/mid/hard/mix/mine 或已加入的分类重名）时才退回序号键。 */
+    const nm=String(c.name||"").trim().slice(0,40);
+    const taken=(k)=>k==="basic"||k==="mid"||k==="hard"||k==="mix"||k==="mine"||(k in BANK);
+    const key=(nm && !taken(nm)) ? nm : (EXT_PREFIX+i);
+    BANK[key]=c.list;                              // 进了 BANK 就自动被「混合·全部」包含
+    const o=document.createElement("option");
+    o.value=key;
+    o.textContent=c.name+" · "+c.list.length+" 词";
+    if(mine) sel.insertBefore(o,mine); else sel.appendChild(o);
+    n+=c.list.length;
+  });
+  refreshCnMap();                                  // 外挂词的释义也要能被查到
+  extCount=n;
+  orderBankOptions();                              // 外挂分类加完后再重排，确保三个内置词典在末尾
+}
+/* 把三个系统内置词典（basic/mid/hard）移到下拉选项最后，用户自己的词库/分类在前 */
+function orderBankOptions(){
+  const sel=$id("selBank");
+  if(!sel) return;
+  const defs=["basic","mid","hard"], others=[], tails=[];
+  Array.prototype.forEach.call(sel.options, function(o){
+    if(defs.indexOf(o.value)>=0) tails.push(o); else others.push(o);
+  });
+  others.concat(tails).forEach(function(o){ sel.appendChild(o); });   // appendChild 会移动已有节点
+}
+let extCount=0;
+function loadExtWords(){
+  if(!window.fetch) return;
+  fetch("words.txt",{cache:"no-store"}).then(r=>{
+    if(!r.ok) throw 0;
+    return r.text();
+  }).then(t=>{
+    const cats=parseExtWords(t);
+    if(cats.length) addExtBanks(cats);
+  }).catch(()=>{ orderBankOptions(); /* file:// 或没有该文件：静默，内置词库照常可用 */ });
+}
+
+function loadMy(){
+  try{
+    const raw=localStorage.getItem(MY_KEY)||"";
+    MY.raw=raw;
+    MY.list=parseMyWords(raw);
+  }catch(e){ MY.list=[]; }
+  refreshCnMap();
+}
+function saveMy(){
+  try{ localStorage.setItem(MY_KEY, MY.raw); }catch(e){}
+}
+
+/* 按英文查中文释义：内置三库 + 我的词库，全局一张表。
+   错词本、结算回顾等都靠它拿释义，避免各处各写一套查找逻辑 */
+const CNMAP=(()=>{
+  const m={};
+  for(const k in BANK) for(const it of BANK[k]) if(it.cn) m[it.en]=it.cn;
+  return m;
+})();
+function lookupCn(en){
+  if(!en) return "";
+  if(CNMAP[en]) return CNMAP[en];
+  const hit=MY.list.find(x=>x.en===en);
+  return hit&&hit.cn ? hit.cn : "";
+}
+/* 我的词库导入后刷新全局表（import 时调用） */
+function refreshCnMap(){
+  for(const it of MY.list) if(it.cn) CNMAP[it.en]=it.cn;
+}
+const $id=id=>document.getElementById(id);
+
+/* ================= audio (实时合成，零文件) ================= */
+const AU={
+  ac:null, master:null, noise:null, ok:false, verb:null, verbGain:null,
+  init(){
+    if(this.ok) return;
+    try{
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC) return;
+      this.ac=new AC();
+
+      // 主链：总线 → 压缩器 → 输出
+      this.master=this.ac.createGain();
+      this.master.gain.value=0.5;
+      const comp=this.ac.createDynamicsCompressor();
+      comp.threshold.value=-18; comp.knee.value=22;
+      comp.ratio.value=9; comp.attack.value=0.003; comp.release.value=0.16;
+      this.master.connect(comp); comp.connect(this.ac.destination);
+
+      // 简易空间感：反馈延迟做混响
+      const dly=this.ac.createDelay(0.5); dly.delayTime.value=0.085;
+      const fb=this.ac.createGain(); fb.gain.value=0.26;
+      const damp=this.ac.createBiquadFilter(); damp.type="lowpass"; damp.frequency.value=2600;
+      this.verbGain=this.ac.createGain(); this.verbGain.gain.value=0.20;
+      this.verbGain.connect(dly); dly.connect(damp); damp.connect(fb); fb.connect(dly);
+      damp.connect(this.master);
+      this.verb=dly;
+
+      const len=this.ac.sampleRate*0.6;
+      const b=this.ac.createBuffer(1,len,this.ac.sampleRate);
+      const d=b.getChannelData(0);
+      for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+      this.noise=b; this.ok=true;
+    }catch(e){ this.ok=false; }
+  },
+  on(){ return this.ok && $id("cbSound").checked; },
+  /* 移动端「完全没声音」的头号原因：AudioContext 必须在【用户手势】里创建并 resume，
+     否则 ac.state 一直卡在 suspended，声音全静默。桌面直接 new 就能响，所以这个坑只在手机上暴露。
+     iOS 还有个独有状态 "interrupted"（来电 / 切后台回来），只判 suspended 会漏掉它。 */
+  unlock(){
+    this.init();
+    if(!this.ac) return false;
+    if(this.ac.state!=="running"){
+      try{ this.ac.resume(); }catch(e){}
+      /* iOS 上光调 resume() 有时不生效，惯用手法是在手势里真的播一个静音 buffer */
+      try{
+        const s=this.ac.createBufferSource();
+        const b=this.ac.createBuffer(1,1,this.ac.sampleRate);
+        s.buffer=b; s.connect(this.ac.destination); s.start(0);
+      }catch(e){}
+    }
+    return this.ac.state==="running";
+  },
+  resume(){ this.unlock(); },
+  tone(f0,f1,dur,type,vol,q,dest){
+    if(!this.on()) return;
+    const t=this.ac.currentTime;
+    const o=this.ac.createOscillator(), g=this.ac.createGain();
+    o.type=type||"square";
+    o.frequency.setValueAtTime(f0,t);
+    if(f1!==f0) o.frequency.exponentialRampToValueAtTime(Math.max(1,f1),t+dur);
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol==null?0.09:vol,t+0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g);
+    let tail=g;
+    if(q){ const f=this.ac.createBiquadFilter(); f.type="lowpass";
+      f.frequency.setValueAtTime(q,t); g.connect(f); tail=f; }
+    tail.connect(this.master);
+    if(this.verb){ const s=this.ac.createGain(); s.gain.value=0.5;
+      tail.connect(s); s.connect(this.verb); }
+    o.start(t); o.stop(t+dur+0.02);
+  },
+  nz(dur,f0,f1,vol,type){
+    if(!this.on()) return;
+    const t=this.ac.currentTime;
+    const s=this.ac.createBufferSource(); s.buffer=this.noise;
+    const g=this.ac.createGain(), f=this.ac.createBiquadFilter();
+    f.type=type||"lowpass";
+    f.frequency.setValueAtTime(f0,t);
+    f.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);
+    g.gain.setValueAtTime(vol==null?0.16:vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    s.connect(f); f.connect(g); g.connect(this.master);
+    if(this.verb){ const w=this.ac.createGain(); w.gain.value=0.35; g.connect(w); w.connect(this.verb); }
+    s.start(t); s.stop(t+dur+0.02);
+  },
+
+  /* ---- 每次正确击键：四层叠加，随连击变亮变厚 ---- */
+  hit(){
+    if(!this.on()) return;
+    const t=this.ac.currentTime;
+    const f=comboFreq();
+    const n=comboNorm();
+    const dur=0.085+n*0.075;
+
+    // 1. 瞬态咔哒（攻击感，让每次按键"有实体"）
+    this.nz(0.022,5200,1400,0.085+0.05*n,"highpass");
+
+    // 2. 主音：从下方快速滑升到目标音 —— 上扬，不是下坠
+    const o=this.ac.createOscillator(), g=this.ac.createGain();
+    o.type="triangle";
+    o.frequency.setValueAtTime(f*0.80,t);
+    o.frequency.exponentialRampToValueAtTime(f,t+dur*0.42);
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(0.115+0.075*n,t+0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(this.master);
+    if(this.verb){ const s=this.ac.createGain(); s.gain.value=0.42; g.connect(s); s.connect(this.verb); }
+    o.start(t); o.stop(t+dur+0.02);
+
+    // 3. 低频衬底：给"重量"，防止高频单薄
+    const s2=this.ac.createOscillator(), g2=this.ac.createGain();
+    s2.type="sine"; s2.frequency.setValueAtTime(f/2,t);
+    g2.gain.setValueAtTime(0,t);
+    g2.gain.linearRampToValueAtTime(0.075+0.05*n,t+0.006);
+    g2.gain.exponentialRampToValueAtTime(0.0001,t+0.10+n*0.06);
+    s2.connect(g2); g2.connect(this.master);
+    s2.start(t); s2.stop(t+0.22);
+
+    // 4. 高频闪：连击 10 以上才出现，制造"进入状态"的奖励
+    if(n>0.2){
+      const o3=this.ac.createOscillator(), g3=this.ac.createGain();
+      o3.type="sine"; o3.frequency.setValueAtTime(f*2,t);
+      g3.gain.setValueAtTime(0,t);
+      g3.gain.linearRampToValueAtTime(0.030*n,t+0.004);
+      g3.gain.exponentialRampToValueAtTime(0.0001,t+0.07);
+      o3.connect(g3); g3.connect(this.master);
+      if(this.verb){ const w=this.ac.createGain(); w.gain.value=0.6; g3.connect(w); w.connect(this.verb); }
+      o3.start(t); o3.stop(t+0.10);
+    }
+  },
+
+  /* ---- 完成一词：三音上行琶音 ---- */
+  wordDone(){
+    if(!this.on()) return;
+    const t=this.ac.currentTime, f=comboFreq();
+    [1,1.26,1.5].forEach((m,i)=>{
+      const o=this.ac.createOscillator(), g=this.ac.createGain();
+      o.type="triangle";
+      const s=t+i*0.042;
+      o.frequency.setValueAtTime(f*m*0.85,s);
+      o.frequency.exponentialRampToValueAtTime(f*m,s+0.05);
+      g.gain.setValueAtTime(0,s);
+      g.gain.linearRampToValueAtTime(0.10,s+0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001,s+0.20);
+      o.connect(g); g.connect(this.master);
+      if(this.verb){ const v=this.ac.createGain(); v.gain.value=0.7; g.connect(v); v.connect(this.verb); }
+      o.start(s); o.stop(s+0.24);
+    });
+    // 底鼓下坠，给"落定感"
+    const b=this.ac.createOscillator(), bg=this.ac.createGain();
+    b.type="sine"; b.frequency.setValueAtTime(150,t);
+    b.frequency.exponentialRampToValueAtTime(48,t+0.16);
+    bg.gain.setValueAtTime(0.16,t);
+    bg.gain.exponentialRampToValueAtTime(0.0001,t+0.20);
+    b.connect(bg); bg.connect(this.master);
+    b.start(t); b.stop(t+0.22);
+  },
+
+  /* ---- 打错：刺耳但不惊吓 ---- */
+  miss(){
+    if(!this.on()) return;
+    const t=this.ac.currentTime;
+    this.nz(0.16,2600,180,0.20);
+    this.tone(210,68,0.20,"sawtooth",0.09,900);
+    this.tone(158,52,0.26,"square",0.06,700);
+  }
+};
+
+/* ---- 连击 → 音高映射 ----
+   五声音阶 20 级。每 2 连击走一级，级内插值补满：combo 0→1 音高就已经升高，
+   没有"前几下一样音"的死区。走完 20 级（combo 38）后转cents 微升，
+   并在 combo 200 处收敛到 F#6≈1850Hz 的 2 倍频以内，避免变成刺耳高频。 */
+const SCALE=[0,2,4,7,9,12,14,16,19,21,24,26,28,31,33,36,38,40,42,44];
+const BASE=196;                // G3：起点压低一个八度，留出向上的空间
+const STEP_PER=2;                    // 每 2 连击一个音级
+const CENTS_PER=4;                   // 音级走完后每连击再涨多少音分（渐弱）
+const CEIL_HZ=1850*2;                // 约 F#6，triangle 波在此不刺耳
+
+function comboStep(){ return Math.min(SCALE.length-1, Math.floor(S.combo/STEP_PER)); }
+/* 连续音高：音阶插值 → 顶端后 cents 上升 → 到达上限后指数收敛 */
+function comboFreq(){
+  const raw=S.combo/STEP_PER;
+  const idx=Math.floor(raw);
+  let hz;
+  if(idx<SCALE.length-1){
+    const lo=SCALE[idx], hi=SCALE[idx+1];
+    hz=BASE*Math.pow(2,(lo+(hi-lo)*(raw-idx))/12);
+  }else{
+    const top=SCALE[SCALE.length-1];
+    const over=raw-(SCALE.length-1);            // 超出音级的级数
+    /* 渐弱爬升：over 的贡献按 1/(1+over) 衰减，越高越慢，最后收敛到上限 */
+    const semis=top+over*CENTS_PER*STEP_PER/12/(1+over*0.55);
+    hz=BASE*Math.pow(2,semis/12);
+  }
+  return hz>CEIL_HZ ? CEIL_HZ*(1+Math.log(hz/CEIL_HZ)*0.02) : hz;
+}
+/* 归一化强度 0..1，连击 40 以上音色封顶（音高继续涨） */
+function comboNorm(){ return Math.min(1, S.combo/40); }
+
+/* ================= shake (from game) ================= */
+const stage=$id("stage");
+function shake(v){
+  S.shake=Math.max(S.shake, v);
+  applyShake();
+}
+let shakeRAF=null, lastShakeT=0;
+function applyShake(){
+  if(S.shake<=0.05){
+    stage.style.transform="";
+    if(shakeRAF){ cancelAnimationFrame(shakeRAF); shakeRAF=null; }
+    return;
+  }
+  const dx=(Math.random()*2-1)*S.shake;
+  const dy=(Math.random()*2-1)*S.shake;
+  stage.style.transform=`translate(${dx.toFixed(2)}px,${dy.toFixed(2)}px)`;
+  S.shake*=0.0016/ (1/60);          // 与游戏一致的衰减
+  S.shake=Math.max(0,S.shake);
+  if(!shakeRAF) shakeRAF=requestAnimationFrame(()=>{
+    const now=performance.now();
+    if(now-lastShakeT<16){ setTimeout(()=>applyShake(),16-(now-lastShakeT)); return; }
+    lastShakeT=now; applyShake();
+  });
+}
+
+/* ================= hitstop (from game) ================= */
+let stopUntil=0;
+function hitstop(s){ stopUntil=Math.max(stopUntil, performance.now()+s*1000); }
+function frozen(){ return performance.now()<stopUntil; }
+
+/* ================= render word ================= */
+/* 空格必须画成可见的 ␣ 符号：
+   否则 "ice cream" 显示成 "icecream"，用户根本不知道要按空格 */
+const SPACE_GLYPH="␣";// ␣
+/* 渲染一个字符位。三类字符的可见性规则完全不同，必须分开判断：
+     - 已打对（i < typed）：永远显示原字符。这是「成果」，遮掉它毫无意义，
+       而且用户需要看到自己刚打出的字母确认没按错。
+     - 空格 / 连字符 / 撇号：永远显示（空格用 ␣）。它们是「结构提示」，
+       遮了用户就不知道这里要按什么键 —— 这是上一轮把 wi-fi 显示成
+       "wi" + 两个空白点的直接原因。
+     - 未打出的字母：遮蔽开→显示 _，关→显示原字符。
+   之前写成 `if(mask && i>=S.typed) txt="_"` 无差别覆盖，
+   会把已打对的字母也一起遮掉（探针 F 段没覆盖到"已打对+遮蔽"这个组合）。 */
+function renderWord(){
+  const w=S.word;
+  /* 变量名必须是 mask 而不是 show：勾选框标签是「遮蔽后续字母」，
+     勾上 = 要遮蔽。原实现写成 show，勾选时反而全部原样显示（语义反了）。 */
+  const mask=$id("cbShow").checked;
+  let html="";
+  for(let i=0;i<w.length;i++){
+    const c=w[i];
+    const isSp=(c===" ");
+    const isPunct=(c==="-" || c==="'");
+    let cls="ch";
+    let txt=c;
+    if(isSp){ cls+=" sp"; txt=SPACE_GLYPH; }
+    if(isPunct) cls+=" pn";
+    if(i<S.typed) cls+=" ok";                     // 已打对：保持原字符，不遮
+    else if(i===S.typed){
+      cls+=" cur";
+      if(mask && !isSp && !isPunct) txt="_";     // 当前位：可遮
+    }else if(mask && !isSp && !isPunct){
+      cls+=" w"; txt="_";                         // 后续位：遮蔽时用暗色 _
+    }
+    html+='<span class="'+cls+'">'+txt+"</span>";
+  }
+  $id("word").innerHTML=html;
+  renderCn();
+}
+/* 中文释义：英文下方。默认可开关（自测时开着），遮蔽模式下也照常显示——
+   学习时先看中文回想英文，才是"中英互译"而不是"抄写" */
+function renderCn(){
+  const el=$id("cn");
+  if(!el) return;
+  const show=$id("cbCn").checked;
+  const cn=S.cn||"";
+  el.textContent=show && cn ? cn : (show ? "（这个词没写释义）" : "");
+  el.classList.toggle("dim", !show);
+  el.style.display=(show && cn)?"block":"none";
+}
+
+function popChar(i){
+  const el=$id("word").children[i];
+  if(!el) return;
+  el.classList.remove("pop");
+  void el.offsetWidth;
+  el.classList.add("pop");
+}
+
+function flashBox(cls){
+  const b=$id("wbox");
+  b.classList.remove("flashGood","flashBad");
+  void b.offsetWidth;
+  b.classList.add(cls);
+}
+
+/* ================= stats ================= */
+function accuracy(){
+  if(S.keystrokes===0) return 100;
+  return Math.round(S.correct/S.keystrokes*100);
+}
+function wpm(){
+  const ms=performance.now()-S.t0;
+  if(ms<500||S.correct===0) return 0;
+  const min=ms/60000;
+  return Math.round(S.correct/5/min);
+}
+function mult(){
+  return (1+Math.min(S.combo,FB.comboMax)*FB.multStep).toFixed(1);
+}
+function renderStats(pulseGood,pulseBad){
+  const A=$id("sAcc"), W=$id("sWpm"), C=$id("sCombo"), Wd=$id("sWords"), B=$id("sBest");
+  A.textContent=accuracy()+"%";
+  W.textContent=wpm();
+  C.textContent="×"+mult();
+  Wd.textContent=S.wordsDone;
+  B.textContent=S.best;
+  if(pulseGood){ [A,W,C,Wd].forEach(e=>{e.classList.add("pulse");setTimeout(()=>e.classList.remove("pulse"),90);}); }
+  if(pulseBad){ A.classList.add("pulseBad"); setTimeout(()=>A.classList.remove("pulseBad"),110); }
+}
+function renderCombo(pop){
+  const n=$id("comboN");
+  n.textContent=S.combo;
+  n.classList.toggle("zero", S.combo===0);
+  if(pop){ n.classList.remove("pop"); void n.offsetWidth; n.classList.add("pop"); }
+  const m=$id("comboMult");
+  m.textContent="×"+mult();
+  m.classList.toggle("hot", S.combo>=24);
+  renderTTSVol();                               // 音量跟着连击实时走，递进过程可见
+}
+function renderMeta(){
+  const mm=Math.floor((performance.now()-S.t0)/60000);
+  const ss=Math.floor((performance.now()-S.t0)/1000);
+  $id("metaTxt").textContent =
+    S.wordsDone+" 词 · "+(mm+":"+String(ss%60).padStart(2,"0"))+" · "+
+    (S.keystrokes? accuracy()+"% 准确":"就绪");
+  refreshAuBadge();
+}
+/* 音频被浏览器拦住（移动端最常见）时露出手动解锁入口。
+   只在「已经初始化过但没跑起来」时显示 —— 桌面正常情况 ac 一创建就是 running，
+   这个角标永远不会出现，不会平白添噪音。 */
+function refreshAuBadge(){
+  const b=$id("auBadge");
+  if(!b) return;
+  const blocked = !!(AU.ac && AU.ac.state!=="running");
+  b.classList.toggle("hide", !blocked);
+}
+function renderProg(){
+  $id("progBar").style.width=Math.min(100, (S.typed/S.word.length)*100)+"%";
+}
+
+/* ================= wrong book ================= */
+/* 把一个字符转成可见文本：空格本身是空白，界面上会看不见 */
+function visChar(c){
+  if(c===" ") return "␣";
+  return c||"";
+}
+function addWrong(ch,want){
+  const k=S.word;
+  if(!S.wrong[k]) S.wrong[k]={n:0,chars:{}};
+  const e=S.wrong[k];
+  e.n++;
+  /* 不用位置索引取字符（原来 c[0]/c[3] 假设"错→对"固定长度，
+     错键是空格时会取错位置），改成显式标记分隔再切 */
+  const key=JSON.stringify([ch,want]);
+  e.chars[key]=(e.chars[key]||0)+1;
+}
+function renderWrong(){
+  const box=$id("wlist");
+  const keys=Object.keys(S.wrong);
+  $id("wCount").textContent=keys.length;
+  if(!keys.length){ box.innerHTML='<span class="empty">还没有错词，继续保持</span>'; return; }
+  keys.sort((a,b)=>S.wrong[b].n-S.wrong[a].n);
+  box.innerHTML=keys.slice(0,40).map(k=>{
+    const e=S.wrong[k];
+    const cs=Object.keys(e.chars).slice(0,2).map(c=>{
+      let pair;
+      try{ pair=JSON.parse(c); }catch(err){ pair=[c,c]; }
+      return '<span class="bad">'+visChar(pair[0])+"</span>→"+visChar(pair[1]);
+    }).join(" ");
+    const cn=lookupCn(k);
+    return '<span class="witem" data-w="'+k+'"><span>'+k+"</span>"+
+      (cn?'<span class="wcn">'+cn+"</span>":"")+
+      (cs?'<span class="bad">'+cs+"</span>":"")+
+      '<span class="cnt">×'+e.n+'</span></span>';
+  }).join("");
+}
+$id("wlist").addEventListener("click",e=>{
+  const it=e.target.closest(".witem");
+  if(!it) return;
+  const w=it.dataset.w;
+  delete S.wrong[w];
+  renderWrong();
+  AU.tone(300,180,0.08,"triangle",0.06);
+});
+
+/* ================= word flow ================= */
+/* 当前词库的候选列表（不放回抽样的输入） */
+function bankList(){
+  if(S.bank==="mine") return MY.list;
+  if(S.bank==="mix"){
+    const out=[];
+    for(const k in BANK) for(const it of BANK[k]) out.push(it);
+    return out;
+  }
+  return BANK[S.bank]||[];
+}
+function newWord(speak){
+  pickWord();
+  if(S.done) return;        // 词池已抽空，本轮结束，不再念词
+  if(speak!==false && $id("cbTTS").checked) say(S.word,S.cn);
+}
+function startSession(){
+  S.combo=0; S.keystrokes=0; S.correct=0; S.wordsDone=0; S.best=0;
+  S.round=[]; S.roundN={};
+  buildPool();            // 每轮重建不放回词池：洗牌后取 min(词库,30) 个不重复词
+  S.t0=performance.now(); S.running=true; S.done=false; S.holdAt=0;
+  $id("done").classList.remove("on");
+  $id("main").style.display="";
+  renderCombo(false); renderStats(); renderWrong();
+  newWord();
+  renderMeta();
+  /* 手机上把焦点交给 #kb，键盘才会在（前提是这次 startSession 由点击触发，
+     iOS 只在用户手势里给开键盘；首屏自动开的那次拿不到键盘属正常，点一下词框即可） */
+  kbFocus();
+  setInterval(renderMeta,500);
+}
+function finishSession(){
+  S.running=false;
+  S.done=true;             // 结算闸门：只设 running 不够，type() 和键盘事件还看 done
+  try{ kbEl.blur(); }catch(e){}   // 本轮结束收起手机键盘，别挡着结算面板
+  const s=Math.floor((performance.now()-S.t0)/1000);
+  S.lastTime=s;
+  S.lastAcc=accuracy(); S.lastCombo=S.best;   // 结算时定格本轮最终准确率与最长连击，随成绩提交
+  $id("dAcc").textContent=accuracy()+"%";
+  $id("dWpm").textContent=wpm();
+  $id("dWords").textContent=S.wordsDone;
+  $id("dCombo").textContent=S.best;
+  $id("dTime").textContent=Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+  renderRound();
+  submitScoreIfJoined(s);   // 若开启了「加入排名」且昵称合法，把本轮成绩提交到云端榜单
+  $id("done").classList.add("on");
+  $id("main").style.display="none";
+  $id("progBar").style.width="100%";
+}
+/* ================= 排行榜（云端，无需登录，按词库分榜） =================
+   一个词库对应一张榜；玩家勾选「加入排名」并填昵称（不与榜上重名）后，
+   每轮结算自动把「用时」提交到云端，按用时从短到长排前 20。
+   昵称唯一性前端预检 + 后端强校验双保险。 */
+const LB={ data:[], names:new Set(), me:localStorage.getItem("keystroke.nick")||"", busy:false };
+function boardLabel(){
+  const m={basic:"默认词库", mix:"混合词库", mine:"我的词库"};
+  return m[S.bank]||S.bank;            // 分类词库的 key 就是分类名（见 addExtBanks），直接返回即显示「买水果」
+}
+function fmtTime(sec){
+  sec=Math.max(0, Math.round(sec));
+  return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0");
+}
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function loadBoard(attempt){
+  attempt=attempt||0;
+  const bankRaw=S.bank, bank=encodeURIComponent(bankRaw);
+  fetch("/api/board?bank="+bank).then(r=>r.ok?r.json():Promise.reject()).then(d=>{
+    if(S.bank!==bankRaw) return;  // 等待期间切换了词库，丢弃过期响应
+    LB.data=(d&&d.board)||[];
+    LB.names=new Set(LB.data.map(x=>String(x.name).trim().toLowerCase()));
+    renderBoard(); validateNick();
+    const n=$id("boardNote"); n.classList.remove("err");
+    n.textContent="按用时从短到长排名 · 仅显示前 20 名 · 成绩保存在云端";
+  }).catch(()=>{
+    if(S.bank!==bankRaw) return;
+    if(attempt<1){ setTimeout(function(){ loadBoard(attempt+1); },1200); return; }  // 瞬态故障自动重试一次
+    const n=$id("boardNote");
+    n.innerHTML='排行榜加载失败（网络或后端异常）<a id="boardRetry">点此重试</a>'; n.classList.add("err");
+    const r=$id("boardRetry"); if(r) r.onclick=function(){ loadBoard(0); };
+  });
+}
+function renderBoard(){
+  $id("boardBank").textContent="· "+boardLabel();
+  const box=$id("blist");
+  if(!LB.data.length){ box.innerHTML='<span class="empty">还没有人上榜，快来抢第一</span>'; return; }
+  const myName=LB.me.trim().toLowerCase();
+  const head='<div class="bhead"><span class="rk">#</span><span class="nm">昵称</span>'+
+    '<span class="tm">用时</span><span class="ac">准确</span><span class="cb">连击</span><span class="dt">日期</span></div>';
+  const rows=LB.data.slice(0,20).map((x,i)=>{
+    const top=i<3?" top"+(i+1):"";
+    const me=(String(x.name).trim().toLowerCase()===myName)?" me":"";
+    return '<div class="brow'+top+me+'"><span class="rk">'+(i+1)+'</span>'+
+      '<span class="nm">'+esc(x.name)+'</span>'+
+      '<span class="tm">'+fmtTime(x.time)+'</span>'+
+      '<span class="ac">'+(x.acc!=null?x.acc+"%":"—")+'</span>'+
+      '<span class="cb">'+(x.combo!=null?x.combo:"—")+'</span>'+
+      '<span class="dt">'+(x.date||"")+'</span></div>';
+  }).join("");
+  box.innerHTML=head+rows;
+}
+function validateNick(){
+  const cb=$id("cbJoin"), nick=$id("nick"), msg=$id("nickMsg");
+  if(!cb.checked){ nick.disabled=true; nick.value=LB.me; msg.textContent=""; msg.className="nickmsg"; return false; }
+  nick.disabled=false;
+  const v=nick.value.trim();
+  if(!v){ msg.textContent="请填写昵称"; msg.className="nickmsg err"; return false; }
+  if(v.length>16){ msg.textContent="昵称最长 16 字"; msg.className="nickmsg err"; return false; }
+  /* 自己的旧名字放行：同昵称要能反复提交去更新最佳成绩（后端 upsert 到最优） */
+  const mine=!!LB.me && v.toLowerCase()===LB.me.trim().toLowerCase();
+  if(LB.names.has(v.toLowerCase()) && !mine){ msg.textContent="该昵称已被占用，换一个"; msg.className="nickmsg err"; return false; }
+  msg.textContent="✓ 可以使用"; msg.className="nickmsg ok"; return true;
+}
+function submitScoreIfJoined(timeSec,attempt){
+  attempt=attempt||0;
+  const cb=$id("cbJoin");
+  if(!cb.checked) return;
+  const nick=$id("nick").value.trim();
+  /* 自己的旧昵称放行（后端按同昵称 upsert 最佳成绩）；只有抢别人的名字才拦 */
+  const mine=!!LB.me && nick.toLowerCase()===LB.me.trim().toLowerCase();
+  if(!nick || nick.length>16 || (LB.names.has(nick.toLowerCase()) && !mine)) return;  // 非法就不提交，避免污染榜单
+  LB.me=nick; try{ localStorage.setItem("keystroke.nick", nick); }catch(e){}
+  LB.busy=true; LB.lastTime=timeSec; LB.lastBank=S.bank;
+  const msg=$id("nickMsg");
+  const post=(attempt)=>{
+    fetch("/api/score",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({bank:S.bank, name:nick, time:timeSec,
+        acc:(typeof S.lastAcc==="number"?S.lastAcc:null),
+        combo:(typeof S.lastCombo==="number"?S.lastCombo:null)})})
+      .then(r=>r.ok?r.json():r.json().then(e=>{ e.status=r.status; return Promise.reject(e); }))
+      .then(d=>{ LB.data=(d&&d.board)||LB.data;
+        LB.names=new Set(LB.data.map(x=>String(x.name).trim().toLowerCase()));
+        renderBoard();
+        msg.textContent="✓ 成绩已提交"; msg.className="nickmsg ok"; })
+      .catch(e=>{
+        // 网络类失败自动重试一次；409 且是自己刚提交成功（上次响应丢失）也按成功处理
+        if(attempt<1 && (!e||!e.status||e.status>=500)){ setTimeout(function(){ post(1); },1500); return; }
+        if(e&&e.status===409 && nick===LB.me){ loadBoard(); msg.textContent="该昵称已在榜上，榜单已刷新"; msg.className="nickmsg ok"; return; }
+        msg.innerHTML=(e&&e.error)?esc(e.error)+' <a id="scoreRetry">点此重试</a>':'提交失败 <a id="scoreRetry">点此重试</a>';
+        msg.className="nickmsg err";
+        const r=$id("scoreRetry"); if(r) r.onclick=function(){ submitScoreIfJoined(LB.lastTime,0); };
+      })
+      .finally(()=>{ LB.busy=false; });
+  };
+  post(0);
+}
+/* 本轮词表回顾：这一轮抽到过的词，按首次出现顺序，英文 + 中文。
+   不放回抽样下每个词本轮只出现一次，所以 ×N 几乎都是 ×1，
+   一眼就能看出「没在原地打转」 */
+function renderRound(){
+  const box=$id("dList");
+  if(!box) return;
+  if(!S.round.length){ box.innerHTML=""; return; }
+  const html=S.round.map(en=>{
+    const cn=lookupCn(en);
+    const n=S.roundN[en]||1;
+    return '<span class="ritem"><span class="ren">'+en+'</span>'+
+      (cn?'<span class="rcn">'+cn+'</span>':"")+
+      (n>1?'<span class="rn">×'+n+'</span>':"")+'</span>';
+  }).join("");
+  const uniq=S.round.length;
+  box.innerHTML=html+
+    '<div class="rnote">本轮 '+S.poolLen+' 个词 · 不放回抽样（'+S.round.length+' 个不同词，无重复）</div>';
+}
+/* ---- 朗读音量：随连击和本轮进度一起抬高 ----
+   连击提供爆发感（打错立刻掉回去），进度提供保底（一路稳步变响）。
+   连击项 = 线性底 + 平方加速：光用平方曲线前两键只涨 0.04% 完全听不出，
+   线性底保证每键都有可感知的台阶，平方项负责后段越打越响。
+   下限锁 TTS_MIN：学习工具音量过小是负反馈。
+   上限不设满：连击 60 + 满进度才接近 100%，否则真实打字 20 键就顶死、没有爬升感了。 */
+const TTS_MIN=0.55, TTS_PROG_GAIN=0.15, TTS_COMBO_LIN=0.28, TTS_COMBO_SQR=0.24;
+function ttsVolume(){
+  const prog=Math.min(1, S.wordsDone/30);          // 本轮 30 词进度
+  const k=Math.min(1, S.combo/60);                 // 连击 60 封顶（60 键≈12 个词，不容易打满）
+  return Math.min(1, TTS_MIN + prog*TTS_PROG_GAIN + k*TTS_COMBO_LIN + k*k*TTS_COMBO_SQR);
+}
+/* 英文播报用 Web Speech API。移动端有两个坑：
+   ① speak() 必须在【用户手势】里调用，boot 时自动开的那一声会被静默丢弃；
+   ② 安卓部分版本只认「瞬态激活」：把 speak 挪进 setTimeout 就丢激活 → 直接哑火。
+      所以空闲时必须【同步】speak，不能无条件延后。
+   ③ iOS 有「说了一次就哑火 / 卡在 paused」的已知 bug，需要 resume() 兜底。
+   注意：这里【不再用空字符串 speak("") 戳引擎】——那是 iOS 的惯用手法，
+   但安卓上空句会把引擎状态搞坏，反而让后续的真句子出不声。改成只预读嗓音表。 */
+let ttsUnlocked=false;
+let justUnlockedTap=false;     // 解锁那个手势已经补播过，词框 click 别再重复念
+function ttsUnlock(){
+  if(ttsUnlocked) return;
+  /* 【不能因为缺 Web Speech 就放弃】没有原生引擎的浏览器恰恰最需要这次手势：
+     它要在这里解锁 <audio> 通道并补播首屏那个词，否则用户第一个词永远是哑的。 */
+  ttsUnlocked=true;
+  auUnlock();                                   // 手势内解锁音频通道（兜底通道要用）
+  try{                                          // 预读嗓音表：安卓嗓音是异步填的，读一下能催它加载
+    if(window.speechSynthesis && window.speechSynthesis.getVoices) window.speechSynthesis.getVoices();
+  }catch(e){}
+  /* 首屏自动开的那声在移动端被丢弃 → 触屏设备借这次手势补播当前词 */
+  if(isTouch() && $id("cbTTS").checked && S.running && !S.done && S.word){ justUnlockedTap=true; say(S.word,S.cn,true); }
+}
+/* ---- 朗读诊断：听不到不能只是「没声音」，要把原因显示出来并给一个可点的重试 ---- */
+let ttsAttempts=0, ttsStarts=0, ttsLastErr="";
+const ttsSupported=()=>!!window.speechSynthesis && typeof window.SpeechSynthesisUtterance==="function";
+function refreshTtsBadge(){
+  const el=$id("ttsBadge");
+  if(!el) return;
+  let msg="", dead=false;
+  if(!ttsSupported()){
+    /* 没有 Web Speech（系统自带浏览器 / WebView 常见）→ 靠词典发音音频兜底。
+       兜底正常出声时就别吓用户；只有兜底也放不出来才提示换浏览器。 */
+    if(auFail>0 && ttsStarts===0){ msg="朗读不可用 · 请换用 Chrome"; dead=true; }
+    else msg="";
+  }
+  else if(ttsAttempts>0 && ttsStarts===0)
+    msg="朗读未启动"+(ttsLastErr?("（"+ttsLastErr+"）"):"")+" · 点此重试";
+  el.textContent=msg;
+  el.classList.toggle("hide", !msg);
+  el.classList.toggle("dead", dead);              // 不支持时别伪装成可点的重试
+  el.title=dead?"当前浏览器既无 Web Speech，词典发音也放不出来":"点一下用手势重试朗读";
+}
+
+/* ================= 朗读兜底：没有 Web Speech 时用词典发音音频 =================
+   系统自带浏览器 / 各类 WebView 常常不实现 speechSynthesis，但它们都支持 <audio>。
+   所以真正的兜底不是"换浏览器"，而是换一条发声通道：词典发音 MP3。
+   接口实测：https://dict.youdao.com/dictvoice?audio=<词>&type=2
+     hello → 200 audio/mpeg 10KB；wi-fi → 11KB；china telecom → 43KB（词组也支持）
+   type=2 是美音。走 encodeURIComponent，空格/连字符都没问题。 */
+const DICT_AUDIO="https://dict.youdao.com/dictvoice?audio=";
+/* 44 字节静音 WAV：移动端 autoplay 限制要求在【用户手势里】先让 audio 元素响过一次，
+   之后才能程序化 play()。用静音片段解锁，用户听不到但通道被打开。 */
+const SILENT_WAV="data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==";
+let auEl=null, auUnlocked=false, auFail=0, auPlay=0;
+function auGet(){
+  if(!auEl){
+    auEl=new Audio();
+    auEl.preload="auto";
+    /* 只有【已经解锁过】（即用户已经有手势）之后的失败才算真失败：
+       手势之前的 play() 被 autoplay 策略拦下是正常现象，不能算"朗读不可用"。 */
+    auEl.addEventListener("error",()=>{ if(auUnlocked){ auFail++; refreshTtsBadge(); } });
+    auEl.addEventListener("playing",()=>{ auPlay++; ttsStarts++; refreshTtsBadge(); });
+  }
+  return auEl;
+}
+/* 必须在【用户手势】里调：让 audio 元素先响过一次，后续才能程序化 play() */
+function auUnlock(){
+  if(auUnlocked) return;
+  auUnlocked=true;
+  try{
+    const a=auGet();
+    a.volume=0; a.src=SILENT_WAV;
+    const p=a.play(); if(p&&p.catch) p.catch(()=>{});
+  }catch(e){}
+}
+/* ---- 发音回退链：有些词典没有收录，不能让那些词变成哑巴 ----
+   实测（2026-10-11，19 个水果词）：dictvoice 对【未收录的词组】不是返回空音频，
+   而是直接 5xx。19 词里 7 个整词完全哑火：
+     different varieties / foam net / young coconut / reddish-brown spots /
+     sweet and tart / reddish-purple / prune plum(仅美音挂)
+   回退顺序（每一级实测都验证过）：
+     A 整词·美音 type=2   —— 常规词命中
+     B 整词·英音 type=1   —— 救 prune plum 这类「只有英音」的词
+     C 拆成单词逐个念     —— 救上面 7 个哑词，实测 100% 命中（foam+net、young+coconut…）
+     D 中文 le=zh         —— 末级兜底，实测 13/19 可用（长词组中文也没收录）
+   每个词记住「哪一级成功过」，下次直接从那一级开始，不重复踩空、不出咔哒静默。 */
+const AU_MEM=new Map();                 // 词 -> 成功过的方案下标
+let auTok=0;                            // 新请求作废旧请求：打字快时后词直接覆盖前词
+function auPlans(word,cn){
+  const w=String(word||"").trim(), P=[];
+  if(!w) return P;
+  P.push({k:"one",u:DICT_AUDIO+encodeURIComponent(w)+"&type=2"});
+  P.push({k:"one",u:DICT_AUDIO+encodeURIComponent(w)+"&type=1"});
+  /* 连字符/斜杠先转空格，再按空格拆：reddish-brown spots → reddish brown spots */
+  const parts=w.replace(/[-—–\/]/g," ").split(/\s+/).filter(Boolean);
+  if(parts.length>1) P.push({k:"seq",p:parts});
+  if(cn && String(cn).trim()) P.push({k:"one",u:DICT_AUDIO+encodeURIComponent(String(cn).trim())+"&le=zh"});
+  return P;
+}
+/* mode:"start"=一出声就算成功；"end"=播完才算成功（拆词连读要等前一个念完） */
+function playOne(a,url,mode,onOK,onFail){
+  let settled=false, started=false, to=0;
+  const fin=ok=>{ if(settled) return; settled=true; clearTimeout(to);
+    a.removeEventListener("error",hErr);
+    a.removeEventListener("playing",hPlay);
+    a.removeEventListener("ended",hEnd);
+    ok?onOK&&onOK():onFail&&onFail(); };
+  const hErr=()=>fin(false);
+  const hPlay=()=>{ started=true; if(mode==="start") fin(true); };
+  const hEnd =()=>{ if(mode==="end") fin(true); };
+  a.addEventListener("error",hErr); a.addEventListener("playing",hPlay); a.addEventListener("ended",hEnd);
+  /* 超时保护：某些 WebView / 弱网下音频既不 playing 也不 error，链条会卡死在半路。
+     到点还没出声 → 判失败、推进下一级；已经出过声 → 算成功（别为了求稳把正在念的词打断）。 */
+  to=setTimeout(()=>fin(started), mode==="end"?4000:2500);
+  try{
+    a.src=url;
+    const p=a.play(); if(p&&p.catch) p.catch(()=>fin(false));
+  }catch(e){ fin(false); }
+  renderTTSVol();
+}
+function runPlan(a,plan,onOK,onFail){
+  if(plan.k==="one"){ playOne(a,plan.u,"start",onOK,onFail); return; }
+  const parts=plan.p; let idx=0;
+  (function next(){
+    if(idx>=parts.length){ onOK&&onOK(); return; }
+    const last=(idx===parts.length-1);
+    playOne(a,DICT_AUDIO+encodeURIComponent(parts[idx])+"&type=2",
+            last?"start":"end",
+            ()=>{ idx++; next(); },
+            onFail);
+  })();
+}
+function auRun(word,cn){
+  const w=String(word||"").trim();
+  const P=auPlans(w,cn);
+  if(!P.length) return;
+  const memo=AU_MEM.get(w);
+  const start=(typeof memo==="number"&&memo<P.length)?memo:0;
+  const my=++auTok;
+  let i=start, tries=0;
+  (function attempt(){
+    if(my!==auTok) return;                       // 被后一个词作废
+    if(tries++>=P.length) return;                // 全链失败：这个词确实念不了，放弃
+    const pl=P[i];
+    const a=auGet(); a.volume=ttsVolume();        // 同样「越打越响」
+    runPlan(a,pl,
+      ()=>{ if(my===auTok) AU_MEM.set(w,i); },   // 记住这一级，下次直接走
+      ()=>{ if(my!==auTok) return; i=(i+1)%P.length; attempt(); });
+  })();
+}
+function sayAudio(t,cn){
+  try{ auRun(t,cn===undefined?S.cn:cn); }
+  catch(e){ if(auUnlocked) auFail++; }
+}
+let ttsVoice=null, ttsTok=0, ttsChannel=null, ttsLastText="";
+/* 嗓音列表异步就绪后刷新缓存：保证整个会话内音色稳定，
+   不会出现「这次默认音、下次 Google 音」的漂移（那也是"被不同音色读"的一种）。 */
+try{
+  if(window.speechSynthesis && window.speechSynthesis.addEventListener){
+    window.speechSynthesis.addEventListener("voiceschanged",function(){ ttsVoice=null; pickVoice(); });
+  }
+}catch(e){}
+function pickVoice(){
+  try{
+    const ss=window.speechSynthesis;
+    const vs=(ss&&ss.getVoices)?ss.getVoices():[];
+    if(!vs || !vs.length) return ttsVoice;        // 列表还没就绪：沿用上次选中的，别漂移
+    const v=vs.find(x=>/^en[-_]?US/i.test(x.lang))||vs.find(x=>/^en/i.test(x.lang))||null;
+    if(v) ttsVoice=v;
+    return ttsVoice;
+  }catch(e){ return ttsVoice; }
+}
+/* 停掉词典音频通道：作废在播的音频链（auTok++）+ 暂停元素。
+   Web Speech 与词典 MP3 是两条独立通道，任何一条开唱前都必须先停掉另一条，
+   否则同一单词会被两个音色叠着读 —— 这正是「有时被不同音色重复读两遍」的根源。 */
+function stopDict(){
+  try{ auTok++; }catch(e){}
+  try{ if(auEl){ auEl.pause(); try{ auEl.currentTime=0; }catch(e){} } }catch(e){}
+}
+function say(t,cn,force){
+  try{
+    if(!$id("cbTTS").checked) return;            // 开关关了就不念
+    const cnx=(cn===undefined)?S.cn:cn;
+    const txt=String(t==null?"":t);
+    /* 系统自带浏览器 / WebView 没有 Web Speech → 直接走词典发音音频 */
+    if(!ttsSupported()){ stopDict(); ttsChannel="dict"; ttsLastText=txt; sayAudio(t,cnx); return; }
+    const ss=window.speechSynthesis;
+    /* 同一句话已经在读：非显式手势的重复触发直接跳过（解锁补播/换词播报常在一拍内叠两次，
+       不加这道就会出现真·念两遍）。显式重听（点音量条/诊断角标/词框）传 force=true，照常重念。
+       注意：这里是 return 而不是继续走流程 —— 不能碰 ttsTok，否则会把在途的那句一起作废。 */
+    if(!force && txt && txt===ttsLastText && (ss.speaking||ss.pending)) return;
+    const my=++ttsTok;                           // 新的一句：作废上一句的 watchdog / 延迟 speak / 回调
+    stopDict();                                  // 开 Web Speech 前先停掉可能在响的词典音频
+    const u=new SpeechSynthesisUtterance(t);
+    u.lang="en-US"; u.rate=0.92;
+    u.volume=ttsVolume();                        // 越打越响
+    const v=pickVoice(); if(v) u.voice=v;        // 显式选 en-US 嗓音，避开默认语种缺失
+    /* 诊断：记下「尝试过几次 / 真正开口几次 / 最后的错误码」，听不到时能显示原因 */
+    ttsAttempts++;
+    const wd=setTimeout(()=>{
+      if(my!==ttsTok) return;                    // 已被更新的朗读取代：不兜底、不叠播
+      if(u.__started || ss.speaking || ss.pending){ u.__started=true; refreshTtsBadge(); return; }
+      /* 引擎确实没出声（不是 onstart 漏报）→ 先停 web 通道，再换词典发音，两条通道不叠 */
+      if(!u.__fb){ u.__fb=true; try{ ss.cancel(); }catch(e){} ttsChannel="dict"; sayAudio(t,cnx); }
+      refreshTtsBadge();
+    },1800);
+    u.onstart=()=>{ if(my!==ttsTok) return; u.__started=true; ttsStarts++; ttsLastErr=""; clearTimeout(wd);
+                    try{ ss.resume(); }catch(e){} refreshTtsBadge(); };
+    u.onerror=(e)=>{ if(my!==ttsTok) return; ttsLastErr=(e&&e.error)||"error";
+                     if(!u.__fb){ u.__fb=true; try{ ss.cancel(); }catch(e){} ttsChannel="dict"; sayAudio(t,cnx); } refreshTtsBadge(); };
+    u.onend =()=>{ if(my!==ttsTok) return; clearTimeout(wd); try{ ss.resume(); }catch(e){} };
+    /* 【关键取舍】
+       空闲时：同步 speak —— 保住用户手势的【瞬态激活】，移动端最稳。
+               上一版无条件 setTimeout(30) 反而把安卓搞哑了（丢激活即静默）。
+       朗读中：先 cancel，下一 tick 再 speak —— Android 同步 cancel+speak
+               会把新句一起静默取消，必须错开一拍。 */
+    ttsLastText=txt;
+    const busy=!!(ss.speaking||ss.pending);
+    if(!busy){ ttsChannel="web"; try{ ss.speak(u); }catch(e){} }
+    else{
+      try{ ss.cancel(); }catch(e){}
+      setTimeout(()=>{ if(my!==ttsTok) return; ttsChannel="web"; try{ ss.speak(u); }catch(e){} },30);
+    }
+    renderTTSVol(); refreshTtsBadge();
+  }catch(e){}
+}
+/* 把当前朗读音量显示出来，否则「变响」这件事完全不可见，学员感觉不到递进 */
+function renderTTSVol(){
+  const el=$id("ttsVol");
+  if(!el) return;
+  const v=ttsVolume();
+  el.textContent="🔊 "+Math.round(v*100)+"%";
+  el.style.opacity=v>=1?"1":".62";
+}
+
+/* ================= combo break ================= */
+function breakCombo(){
+  if(S.combo>0){
+    shake(FB.shakeBreak);
+    AU.tone(220,70,0.18,"sawtooth",0.1,700);
+    flashBox("flashBad");
+  }
+  S.combo=0;
+  renderCombo(false);
+}
+
+/* ================= 核心判定：键盘事件与自动化测试共用这一段 ================= */
+function onChar(ch){
+  const want=S.word[S.typed];
+  S.keystrokes++;
+
+  if(ch===want){
+    S.correct++;
+    S.typed++;
+    popChar(S.typed-1);
+    shake(FB.shakeFire);
+    AU.hit();
+    S.combo++;
+    if(S.combo>S.best) S.best=S.combo;
+    renderCombo(true);
+    renderStats(true,false);
+    renderWord(); renderProg();
+
+    if(S.typed>=S.word.length){
+      S.wordsDone++;
+      shake(FB.shakeWord);
+      hitstop(FB.hitstopWord);          // 完成一词：顿帧
+      AU.wordDone();
+      flashBox("flashGood");
+      /* 换词必须同步完成。原来用 setTimeout 延后 220ms，
+         下一个词已经在等输入但 S.word 还没换 → 连打时按键被吞。
+         真人 300 WPM 每键约 200ms，比这还快，会真丢键。
+         闪绿只是 CSS 动画，与换词解耦后不影响反馈。
+         一轮结束由词池耗尽触发（pickWord 内 finishSession），此处直接换词即可 */
+      newWord();
+    }
+  } else {
+    addWrong(ch,want);
+    breakCombo();
+    shake(FB.shakeError);
+    AU.miss();
+    renderStats(false,true);
+    renderWrong();      // 原来漏了：错词本要等下次 startSession 才刷新，用户打完看不到记录
+    const el=$id("word").children[S.typed];
+    if(el){ el.classList.add("err"); setTimeout(()=>{ if(el) el.classList.remove("err"); },220); }
+  }
+  return true;
+}
+
+/* ================= key handling ================= */
+/* 合法目标字符：字母 + 空格 + 连字符/撇号（wi-fi、o'clock 这类词）
+   —— 解析器放行了这些字符，键盘层必须用同一套口径，否则出现"能显示打不出" */
+const RE_TARGET_CHAR=/^[a-z \-']$/;
+const KEYCODE={65:'a',66:'b',67:'c',68:'d',69:'e',70:'f',71:'g',72:'h',73:'i',74:'j',
+  75:'k',76:'l',77:'m',78:'n',79:'o',80:'p',81:'q',82:'r',83:'s',84:'t',85:'u',86:'v',
+  87:'w',88:'x',89:'y',90:'z', 189:'-', 191:'/', 192:'`'};
+/*取字符：优先 e.key；部分输入法/合成事件下 e.key 不可靠，回退 keyCode。
+   空格/连字符/撇号必须放行——导入的词组（"ice cream"、"wi-fi"）含这些字符，
+   这里拦掉就永远打不出来。但它们只在"当前目标字符就是它"时才算有效按键，
+   否则会误吞用户想按的其他键（空格还是按钮的默认激活键）。 */
+function charOf(e){
+  let k=e.key;
+  if(typeof k!=="string" || k.length!==1){
+    const code=e.which||e.keyCode||0;
+    if(code===32) k=" ";
+    else k=KEYCODE[code] || "";
+  }
+  if(!k) return null;
+  if(k==="Spacebar"||k==="Space") k=" ";
+  return k.toLowerCase();
+}
+/* 焦点在可编辑元素里时，按键必须原样还给浏览器。
+   这个监听挂在 document 上，而导入面板的 <textarea> 就在同一个 document 里 ——
+   没有这层守卫，用户在词库输入框里敲的空格会被下面的 e.preventDefault() 吃掉：
+   空格打不出来，字母也一样打不进去（两者都会走 preventDefault）。
+   教训：全局 keydown 拦截「字符键」之前，永远先判断事件来源是不是输入框。 */
+function isTypingTarget(t){
+  if(!t) return false;
+  const tag=(t.tagName||"").toUpperCase();
+  return tag==="INPUT" || tag==="TEXTAREA" || tag==="SELECT" || t.isContentEditable===true;
+}
+document.addEventListener("keydown",e=>{
+  if(isTypingTarget(e.target)){
+    /* #kb 是游戏自己的输入口，不算"别人的输入框"：
+       Tab 换词 / Esc 跳过必须照常生效，否则焦点在它上面时这两个快捷键会失灵 */
+    if(e.target===kbEl){
+      if(e.key==="Tab"){ e.preventDefault(); $id("btnNext").click(); }
+      else if(e.key==="Escape"){ e.preventDefault(); skipWord(); }
+      return;
+    }
+    /* 输入框内只接管两个键，其余一律放行 */
+    if(e.key==="Escape"){ e.preventDefault(); e.target.blur(); openImport(false); }
+    else if(e.key==="Enter" && (e.ctrlKey||e.metaKey)){ e.preventDefault(); applyImport(); }
+    return;
+  }
+  if(e.key==="Tab"){ e.preventDefault(); $id("btnNext").click(); return; }
+  if(e.key==="Escape"){ e.preventDefault(); skipWord(); return; }
+  if(!S.running || S.done) return;
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  const ch=charOf(e);
+  if(!ch) return;
+  /* 只过滤"根本不是目标字符集"的键（数字、标点、中文输入法残留等），
+     这些不该产生任何反馈。
+     空格/连字符/撇号/字母都属于目标字符集，必须全部交给 onChar 判断对错：
+     写错字母要计错、要播 miss 音效、要进错词本 —— 早先在这里加过
+     `if(ch!==S.word[S.typed]) return;` 把错键挡在 onChar 外面，
+     结果打错完全没反馈、错词本永远是空的（探针 H7a 实测抓到的回归）。 */
+  if(!RE_TARGET_CHAR.test(ch)) return;
+  e.preventDefault();       // 收下的按键要拦掉默认行为（空格会滚动页面）
+  AU.init(); AU.resume();
+  onChar(ch);
+});
+
+/* ================= 手机软键盘 =================
+   手机没有物理键盘，光有 document 上的 keydown 在移动端根本收不到字。
+   做法：放一个 1px 透明 input（#kb），靠它唤起系统键盘，再从三类事件里逐字取字符。
+
+   为什么是三个事件而不是一个 —— 各平台给的时机完全不同：
+     ① keydown       iOS / 外接键盘会给正确的 e.key → 直接 preventDefault，字符不会进 input
+     ② beforeinput   多数安卓输入法只给 e.data（keydown 是 keyCode=229 / "Unidentified"）
+     ③ input         兜底：字符已经插进来了，取最后一个再清空
+   三层之间是互斥的：只要前一层 preventDefault 了，后面的就不会再触发，
+   所以不会重复计数。 */
+function kbTake(ch){
+  if(!ch) return false;
+  ch=String(ch).toLowerCase();
+  if(!RE_TARGET_CHAR.test(ch)) return false;   // 与键盘层同一口径：非目标字符不产生反馈
+  AU.init(); AU.resume();
+  onChar(ch);
+  return true;
+}
+const kbEl=$id("kb");
+/* 组合期（中文拼音候选）一律不接管。
+   拼音键盘下每敲一个字母都会给 beforeinput(data="w")，如果照单全收 + preventDefault，
+   输入法的候选条会被打断、组合状态被打乱，后面整段都打不出来。
+   英文键盘不会触发 composition 事件，加这个守卫对英文路径零影响。 */
+let kbComposing=false;
+kbEl.addEventListener("keydown",e=>{
+  if(kbComposing) return;
+  const ch=charOf(e);
+  if(!ch || !RE_TARGET_CHAR.test(ch)) return;   // 拿不到就交给下面的兜底层
+  if(kbTake(ch)) e.preventDefault();
+});
+kbEl.addEventListener("beforeinput",e=>{
+  if(kbComposing) return;
+  const dt=e.data;
+  /* 只认「一次插入一个字符」。输入法提交整个词（联想/自动更正）时不接管，
+     交给 input 层清掉 —— 否则会把整个词当成一个按键，判定全乱。 */
+  if(!dt || dt.length!==1) return;
+  if(!RE_TARGET_CHAR.test(dt.toLowerCase())) return;
+  e.preventDefault();
+  kbTake(dt);
+});
+kbEl.addEventListener("input",()=>{
+  const v=kbEl.value;
+  kbEl.value="";                    // 立刻清空，不让它攒成一个词
+  if(v) kbTake(v[v.length-1]);
+});
+kbEl.addEventListener("compositionstart",()=>{ kbComposing=true; kbEl.value=""; });
+kbEl.addEventListener("compositionend",()=>{ kbComposing=false; kbEl.value=""; });
+
+function isTouch(){
+  return !!(window.matchMedia && window.matchMedia("(hover:none) and (pointer:coarse)").matches);
+}
+/* force=true 表示来自明确的用户点击（点词框），一律照做；
+   否则只在触摸设备上自动抢 —— 桌面有物理键盘，document 上的监听本就收得到，
+   抢到隐藏 input 只会碍事。 */
+function kbFocus(force){
+  if(!S.running || S.done) return;
+  const imp=$id("importer");
+  if(imp && !imp.classList.contains("hide")) return;   // 导入面板开着，别抢它的焦点
+  if(!force && !isTouch()) return;
+  try{ kbEl.focus({preventScroll:true}); }catch(e){ kbEl.focus(); }
+  /* 手机上软键盘会吃掉半屏，把词框滚到中间才看得见自己在打什么 */
+  if(window.matchMedia && window.matchMedia("(max-width:640px)").matches){
+    try{ $id("wbox").scrollIntoView({block:"center"}); }catch(e){}
+  }
+}
+/* 点词框 = 唤起键盘（必须是用户手势，iOS 才买账） */
+$id("wbox").addEventListener("click",()=>{
+  kbFocus(true);
+  /* 已解锁过 → 再点一下重听当前词。首触由 ttsUnlock 补播了，用 justUnlockedTap 跳过，
+     否则同一拍会被念两遍（解锁手势里的补播 + 这里的重听）。 */
+  if(ttsUnlocked && $id("cbTTS").checked && S.running && !S.done && S.word){
+    if(!justUnlockedTap) say(S.word,S.cn,true);
+  }
+  justUnlockedTap=false;
+});
+/* 诊断角标本身就是用户手势，点了就重试朗读；音量指示点一下可重听当前词 */
+$id("ttsBadge").addEventListener("click",()=>{
+  ttsUnlocked=true;
+  if(S.word) say(S.word,S.cn,true);
+});
+$id("ttsVol").addEventListener("click",()=>{ if(S.word) say(S.word,S.cn,true); });
+/* 失焦后自动抢回：手机上键盘一收就没法继续打。
+   【但这个自动行为闯过大祸】用户切到宿主平台（WorkBuddy）的输入框打字时，
+   这里 90ms 后把焦点抢回 #kb，那边就一个字都打不进去。
+   三重保险，缺一不可：
+     ① 只在触摸设备上自动抢（桌面物理键盘不需要，抢了纯添乱）
+     ② 页面不可见 / 整个文档都没焦点时不抢（用户已经离开这个页面了）
+     ③ 焦点落在别的输入框（词库 textarea）时不抢（用户在编辑词表） */
+kbEl.addEventListener("blur",()=>{
+  if(!isTouch()) return;
+  setTimeout(()=>{
+    if(!S.running || S.done) return;
+    if(document.visibilityState && document.visibilityState!=="visible") return;
+    if(!document.hasFocus()) return;        // 整个文档都没焦点 = 用户去别处了
+    const imp=$id("importer");
+    if(imp && !imp.classList.contains("hide")) return;
+    const a=document.activeElement;
+    if(a && a!==kbEl && isTypingTarget(a)) return;
+    kbFocus(true);
+  },90);
+});
+/* 切走时主动放开焦点，别占着手机键盘 */
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState!=="visible"){ try{ kbEl.blur(); }catch(e){} }
+});
+
+function skipWord(){
+  if(!S.running) return;
+  S.keystrokes++;
+  breakCombo();
+  AU.nz(0.1,1200,400,0.1);
+  shake(FB.shakeError);
+  newWord();
+  renderStats(false,false);
+}
+
+/* ================= controls ================= */
+$id("selBank").addEventListener("change",e=>{
+  S.bank=e.target.value;
+  if(S.bank==="mine" && !MY.list.length){
+    openImport(true);          // 没词库却选中了 → 直接弹导入面板，别让用户对着空界面
+    return;
+  }
+  /* 中途换词库必须重建词池：不放回抽样的池子是开局那一次 buildPool 建的，
+     不重建的话选中「酒店」却还在抽「买水果」的词 —— 换库和没换一样。
+     本轮回顾也跟着清空，否则结算页会把两个词库的词混在一起展示。 */
+  if(S.running){ buildPool(); S.round=[]; S.roundN={}; newWord(); renderMeta(); }
+  loadBoard();                // 切换词库 → 重载该词库对应的排行榜
+});
+$id("cbCn").addEventListener("change",renderCn);
+
+/* ---- 导入词库 ---- */
+function impMsg(s,err){
+  const el=$id("impMsg");
+  el.textContent=s;
+  el.classList.toggle("err",!!err);
+}
+function refreshMineOpt(){
+  const o=$id("optMine");
+  o.textContent="我的词库 · "+MY.list.length+" 词";
+  o.disabled=!MY.list.length;
+  if(!MY.list.length && S.bank==="mine"){
+    S.bank="basic"; $id("selBank").value="basic";
+  }
+}
+function openImport(open){
+  $id("importer").classList.toggle("hide",!open);
+  if(open){
+    /* 挂起计时：WPM/时长是 performance.now()-S.t0，编辑词库的几十秒不该算进去。
+       收起时把这段时间整体「还」给 t0，等价于计时器从头到尾没走过。 */
+    if(!S.holdAt) S.holdAt=performance.now();
+    $id("taWords").value=MY.raw;
+    impMsg(MY.list.length?("已载入 "+MY.list.length+" 词，可直接编辑"):"粘贴词表后点「导入并使用」");
+    $id("taWords").focus();
+  }else if(S.holdAt){
+    S.t0 += performance.now()-S.holdAt;
+    S.holdAt=0;
+  }
+}
+function applyImport(){
+  const txt=$id("taWords").value;
+  const list=parseMyWords(txt);
+  if(!list.length){
+    impMsg("没解析出有效单词。每行至少要有一个英文词，例如：apple 苹果",true);
+    return;
+  }
+  MY.raw=txt; MY.list=list;
+  saveMy();
+  refreshCnMap();            // 错词本等处靠 CNMAP 查释义，导入后必须刷新
+  refreshMineOpt();
+  S.bank="mine";
+  $id("selBank").value="mine";
+  const noCn=list.filter(x=>!x.cn).length;
+  impMsg("导入 "+list.length+" 词"+(noCn?("（"+noCn+" 词没写释义）"):""));
+  if(S.running) newWord();
+}
+/* 导出当前词库 → words.txt 格式的文本。
+   用途：在手机上用「导入词库」试好的一批词，可以一键取回文本发给我，
+   我直接并进 words.txt 发布，线上所有人就都能用这批词了。 */
+function exportBank(){
+  const list=bankList();
+  const opt=$id("selBank").selectedOptions[0];
+  const name=(opt&&opt.textContent?opt.textContent:"当前词库").split(" · ")[0];
+  const txt="# "+name+"\n"+list.map(it=>it.en+(it.cn?("　"+it.cn):"")).join("\n");
+  const ta=$id("taWords");
+  ta.value=txt;
+  try{
+    ta.focus(); ta.select();
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt);
+  }catch(e){}
+  impMsg("已导出 "+list.length+" 词到文本框（同时尝试复制到剪贴板）");
+}
+$id("btnExport").addEventListener("click",exportBank);
+$id("btnImport").addEventListener("click",()=>openImport($id("importer").classList.contains("hide")));
+$id("btnCloseImport").addEventListener("click",()=>openImport(false));
+$id("btnDoImport").addEventListener("click",applyImport);
+$id("btnClearMy").addEventListener("click",()=>{
+  MY.raw=""; MY.list=[];
+  try{ localStorage.removeItem(MY_KEY); }catch(e){}
+  // 重建 CNMAP 只留内置词库的释义，否则已删词条还会被查到
+  for(const k in CNMAP) delete CNMAP[k];
+  for(const bk in BANK) for(const it of BANK[bk]) if(it.cn) CNMAP[it.en]=it.cn;
+  $id("taWords").value="";
+  refreshMineOpt();
+  impMsg("已清空");
+  renderWrong();
+  if(S.running) newWord();
+});
+$id("btnNext").addEventListener("click",()=>{
+  if(!S.running){ startSession(); return; }
+  skipWord();
+});
+$id("btnReset").addEventListener("click",()=>{
+  S.wrong={};
+  startSession();
+});
+$id("btnAgain").addEventListener("click",startSession);
+$id("cbShow").addEventListener("change",renderWord);
+$id("cbSound").addEventListener("change",()=>{ AU.init(); });
+/* 音频解锁：移动端必须在用户手势里做。
+   pointerdown / touchstart 比 click 触发得更早也更可靠 ——
+   手机上「点词框 → 打字」这条路径，声音会在按下那一刻就被解开。 */
+["pointerdown","touchstart","click"].forEach(ev=>
+  document.addEventListener(ev,()=>{ AU.unlock(); auUnlock(); ttsUnlock(); refreshAuBadge(); },{passive:true}));
+/* 角标本身就是用户手势，点了就解锁；解锁成功后再敲一下听个响 */
+$id("auBadge").addEventListener("click",()=>{
+  AU.unlock(); refreshAuBadge();
+  AU.tone(660,880,0.12,"triangle",0.09);
+});
+
+/* ================= runtime handle ================= */
+Object.defineProperty(window,"__KS",{get:()=>({S,FB,BANK,AU,
+  accuracy,wpm,mult,pickWord,newWord,startSession,finishSession,
+  breakCombo,shake,hitstop,
+  /* type():把一个键直接喂进核心处理逻辑。
+     键盘事件层之外暴露同一份逻辑，自动化测试与无键盘环境都能驱动同一段代码 */
+  type:(ch)=>{
+    if(!S.running||S.done) return false;
+    ch=String(ch);
+    if(ch==="Spacebar"||ch==="Space") ch=" ";
+    ch=ch.toLowerCase();
+    /* 与键盘层同一口径（RE_TARGET_CHAR），但这里【不能】再加
+       "必须等于当前目标字符"的判断 —— 错键也要走onChar 才能触发
+       计错 / miss 音效 / 错词本。两层口径不一致 = 探针测的和真人打的不一样 */
+    if(!RE_TARGET_CHAR.test(ch)) return false;
+    return onChar(ch);
+  },
+  /* 音高映射：暴露出来便于验证「音高到底爬了多少」，不用跨 realm 求值 */
+  pitch:()=>({step:comboStep(),freq:comboFreq(),norm:comboNorm()}),
+  /* 朗读音量：同上，便于验证音量曲线 */
+  tts:()=>({vol:ttsVolume()}),
+  /* 自定义词库：暴露给探针验证解析器 */
+  MY, parseMyWords, loadMy, saveMy, applyImport,
+  /* 抽词规则：暴露给探针验证不放回抽样词池 */
+  S, bankList, buildPool, shuffle, ROUND_CAP,
+  /* 渲染入口：探针改完 S 之后要能重画，change 事件触发不了它 */
+  renderWord,
+  /* 英文播报解锁：暴露给探针验证移动端手势解锁与触屏补播 */
+  ttsUnlock, ttsUnlocked:()=>ttsUnlocked, say,
+  /* 测试钩子：复位解锁标志与诊断计数（生产代码不调用） */
+  ttsReset:()=>{ ttsUnlocked=false; justUnlockedTap=false; ttsTok++; ttsChannel=null; ttsLastText=""; stopDict();
+                 ttsAttempts=0; ttsStarts=0; ttsLastErr=""; refreshTtsBadge(); },
+  ttsDiag:()=>({attempts:ttsAttempts, starts:ttsStarts, err:ttsLastErr,
+                supported:ttsSupported(), auFail, auPlay}),
+  ttsSupported, refreshTtsBadge, sayAudio, auUnlock,
+  /* 排行榜：暴露给探针验证分榜加载 / 昵称校验 / 提交 */
+  LB, loadBoard, renderBoard, validateNick, submitScoreIfJoined, boardLabel, fmtTime,
+  /* 发音回退链：暴露给探针验证「哑词能被拆词救回」 */
+  auPlans, auRun, auMem:()=>AU_MEM,
+  /* 外挂词表 words.txt：解析 / 装载 / 导出，暴露给探针验证 */
+  parseExtWords, addExtBanks, exportBank, extCount:()=>extCount,
+  frozen:()=>frozen(),
+  /* 主题切换：暴露给探针验证三主题应用与持久化 */
+  applyTheme
+})});
+
+/* ---- 主题切换：深色 / 白色 / 绿色 ----
+   属性挂在 <html> 上；head 内联脚本已做首刷（无白屏闪烁），这里管按钮高亮、持久化与 theme-color。 */
+const THEMES=["dark","white","green"];
+const THEME_BG={dark:"#0a0b10",white:"#f2f3f6",green:"#edf6ef"};
+function applyTheme(t){
+  if(THEMES.indexOf(t)<0) t="dark";
+  document.documentElement.setAttribute("data-theme",t);
+  try{ localStorage.setItem("keystroke.theme",t); }catch(e){}
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute("content",THEME_BG[t]||"#0a0b10");
+  document.querySelectorAll(".themes .th").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+}
+document.querySelectorAll(".themes .th").forEach(b=>b.addEventListener("click",()=>applyTheme(b.dataset.t)));
+
+/* ================= boot ================= */
+loadMy();                    // 先把用户词库读进来，refreshMineOpt 要用到 MY.list
+refreshMineOpt();
+openImport(false);           // 默认收起导入面板
+renderWord();
+renderStats();
+renderWrong();
+renderTTSVol();          // 初始音量指示（默认朗读勾选着）
+refreshTtsBadge();       // 朗读诊断角标（不支持朗读时立刻显示）
+applyTheme(localStorage.getItem("keystroke.theme")||"dark");  // 主题：同步按钮高亮与 theme-color
+loadExtWords();          // 外挂词表 words.txt：线上发布时才拉得到，本地 file:// 静默跳过
+loadBoard();             // 拉取当前词库的云端排行榜
+setTimeout(startSession,50);
+
+/* ---- 排行榜：加入排名开关 + 昵称校验 ---- */
+$id("cbJoin").addEventListener("change",()=>{ validateNick(); const n=$id("nick"); if($id("cbJoin").checked) setTimeout(()=>n.focus(),50); });
+$id("nick").addEventListener("input",validateNick);
+
+
+})();
+
+/* ================= 访问计数（右下角角标） =================
+   用「不蒜子 busuanzi」的 JSONP 接口拿 UV/PV：零注册、国内可达、只发一个请求。
+   只统计、不执行第三方脚本（自己拼 script 标签取数，回调自己渲染），
+   服务偶尔不稳或本地 file:// 打不开时静默降级，绝不影响打字体验。 */
+(function(){
+  try{
+    var cb='kscb_'+Math.random().toString(36).slice(2);
+    var timer=setTimeout(function(){ try{ delete window[cb]; }catch(e){} },8000);
+    window[cb]=function(r){
+      clearTimeout(timer);
+      try{ delete window[cb]; }catch(e){}
+      try{
+        var uv=(r&&r.site_uv)||0, pv=(r&&r.site_pv)||0;
+        if(!uv && !pv) return;
+        var el=document.createElement('div');
+        el.id='visitor';
+        el.title='累计访问 '+pv+' 次（独立访客按设备粗略去重，供参考）';
+        el.innerHTML='👀 <b>'+uv+'</b> 人使用过<span class="sep">·</span>访问 <b>'+pv+'</b> 次';
+        document.body.appendChild(el);
+      }catch(e){}
+    };
+    var s=document.createElement('script');
+    s.async=true;
+    s.src='https://busuanzi.ibruce.info/busuanzi?jsonpCallback='+cb;
+    document.body.appendChild(s);
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

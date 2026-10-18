@@ -1,0 +1,14 @@
+{
+  "name": "wendys-keyword",
+  "version": "1.0.0",
+  "description": "Wendy's KeyWord — 视频单词打字练习器 + 云端排行榜（单文件前端，零依赖后端）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dupcheck": "python tools/dupcheck.py"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "license": "MIT"
+}
