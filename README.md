@@ -1,29 +1,28 @@
 # Wendy's KeyWord
 
-> Key 是钥匙，也是键盘上的键 —— 一个把「视频里学过的单词」变成打字小游戏的练习器。
-> Key is both a key and a key on the keyboard — a typing trainer that turns words from your videos into a mini game.
+> KeyWord 既代表我帐号视频中出现的关键词，也是键盘上的键 —— 让记单词如嗦凉皮一般爽滑！
+> "KeyWord" is a play on words: it stands for the keywords in my videos, and the keys on a keyboard.  Make memorizing vocabulary as smooth and satisfying as slurping a bowl of Liangpi！
 
-做这个项目的初衷：看视频的人很少能把内容看完，担心大家看完什么单词都没记住。于是把视频中出现过的单词按主题整理成词库，配上打字反馈、连击倍率和排行榜，让记单词变得像小游戏一样上瘾。
+做这个项目的初衷：看我视频的人很少能把内容看完，担心大家看完什么单词都没记住。于是把视频中出现过的单词按主题整理成词库，配上打字反馈、连击倍率和排行榜，让记单词变得像小游戏一样上瘾。
 
 ![白色主题](docs/screenshot-white.png)
 
 ## 功能特性 / Features
 
-- **单文件前端**：`index.html` 一个文件装下全部 CSS/JS，零构建、零前端依赖
-- **三主题配色**：深色 / 白色 / 绿色一键切换，`localStorage` 记忆偏好，支持 `?theme=white` 强制指定（分享主题链接用）
+- **主题配色**：深色 / 白色 / 绿色
 - **不放回抽词**：每轮从词库不放回抽取，池空自动结束，避免重复刷同一个词
 - **语音朗读**：每个单词自动朗读（有道 TTS），可开关
 - **打字反馈**：连击计数、倍率累积、音调随连击升高，错的词进「易错词本」
-- **排行榜**：每个词库一张榜；同一昵称保留最佳成绩（用时取更短、准确率/连击各取最大）；展示前 20 名
+- **排行榜**：每个词库一张榜；同一昵称保留最佳成绩；展示前 20 名
 - **外挂词库 `words.txt`**：改词库 = 改一个 txt 文件，支持分类、词组、词典导出格式
 - **导入 / 导出**：可粘贴自己的中文词表导入，也可把当前词库导出成 `words.txt` 格式
-- **零依赖后端**：`server.js` 只用 Node 内置模块，同时托管静态文件和排行榜 API
 
 ## 快速开始 / Quick Start
 
 ```bash
+cd wendys-keyword
 node server.js          # 或者 npm start
-# 打开 http://localhost:3000
+# 默认打开 http://localhost:3000
 ```
 
 端口可用环境变量修改：`PORT=8080 node server.js`。
@@ -39,7 +38,7 @@ node server.js          # 或者 npm start
 bus 公交汽车
 bus stop 公交车站
 "get on the bus" 上公交车    ← 带空格的词组加引号
-Wi-Fi　n. 无线网络           ← 词典导出格式（全角空格 + 词性标记）也认
+Wi-Fi　n. 无线网络           ← 词典导出格式（全角空格 + 词性标记）
 keyboard                      ← 中文释义可以省略
 ```
 
