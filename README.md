@@ -20,7 +20,7 @@
 ## 快速开始 / Quick Start
 
 ```bash
-cd wendys-keyword
+cd wendys-keyword-main
 node server.js          # 或者 npm start
 # 默认打开 http://localhost:3000
 ```
