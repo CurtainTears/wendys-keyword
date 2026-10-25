@@ -207,6 +207,8 @@ try {
   ).data.invitation;
   await docker("exec", name, "node", "tools/backup.mjs");
   await docker("restart", name);
+  // Docker can reassign an automatically published host port on restart.
+  port = Number((await docker("port", name, "3000/tcp")).split(":").at(-1));
   await ready();
   assert.equal(
     (await call("/api/me", undefined, admin.cookie)).data.user.role,
