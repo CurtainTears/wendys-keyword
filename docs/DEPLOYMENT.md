@@ -11,6 +11,8 @@ ghcr.io/curtaintears/wendys-keyword:sha-<完整提交号>
 
 工作流使用仓库自动提供的 `GITHUB_TOKEN`，只在镜像任务授予 `packages: write`，无需额外保存 Docker Hub 密钥。依照 [Docker 官方构建文档](https://docs.docker.com/build/ci/github-actions/multi-platform/)，用 Buildx 发布双架构镜像；第三方 Action 固定到具体提交。
 
+开发交付以推送到 `main`、确认 GitHub Actions 检查及镜像发布成功为完成。生产环境的备份、镜像拉取和容器更新由站点所有者执行；以下部署与更新步骤供站点所有者操作。
+
 ## 首次启动
 
 服务器需要 Docker Engine 与 Compose v2，并由 HTTPS 反向代理把公开域名转发到 `127.0.0.1:3000`，保留公开域名的 Host。
