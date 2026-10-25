@@ -1,5 +1,11 @@
 import { createPractice } from "./practice.mjs";
-import { isPracticeChar, targetFor } from "../shared/words.mjs";
+import { isPracticeChar } from "../shared/words.mjs";
+import {
+  createPronunciation,
+  englishVoices,
+  chooseVoice,
+  voiceKey,
+} from "./pronunciation.mjs";
 
 export function createTrainer({
   onComplete,
@@ -25,6 +31,7 @@ export function createTrainer({
     pausedByUser = false,
     completedId = null;
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let speechActive = false;
   const AU = {
     ac: null,
     master: null,
@@ -40,7 +47,7 @@ export function createTrainer({
         this.ac = new AC();
 
         this.master = this.ac.createGain();
-        this.master.gain.value = 0.5;
+        this.master.gain.value = speechActive ? 0.12 : 0.5;
         const comp = this.ac.createDynamicsCompressor();
         comp.threshold.value = -18;
         comp.knee.value = 22;
@@ -300,368 +307,77 @@ export function createTrainer({
   function comboNorm() {
     return Math.min(1, S.combo / 40);
   }
-  const TTS_MIN = 0.55,
-    TTS_PROG_GAIN = 0.15,
-    TTS_COMBO_LIN = 0.28,
-    TTS_COMBO_SQR = 0.24;
-  function ttsVolume() {
-    const prog = Math.min(1, S.wordsDone / Math.max(1, S.poolLen)); // 本轮 30 词进度
-    const k = Math.min(1, S.combo / 60); // 连击 60 封顶（60 键≈12 个词，不容易打满）
-    return Math.min(
-      1,
-      TTS_MIN +
-        prog * TTS_PROG_GAIN +
-        k * TTS_COMBO_LIN +
-        k * k * TTS_COMBO_SQR,
-    );
-  }
-
-  let ttsUnlocked = false;
-  let justUnlockedTap = false; // 解锁那个手势已经补播过，词框 click 别再重复念
-  function ttsUnlock() {
-    if (ttsUnlocked) return;
-
-    ttsUnlocked = true;
-    auUnlock(); // 手势内解锁音频通道（兜底通道要用）
-    try {
-      // 预读嗓音表：安卓嗓音是异步填的，读一下能催它加载
-      if (window.speechSynthesis && window.speechSynthesis.getVoices)
-        window.speechSynthesis.getVoices();
-    } catch (e) {}
-
-    if (isTouch() && $id("cbTTS").checked && S.running && !S.done && S.word) {
-      justUnlockedTap = true;
-      say(S.word, S.cn, true);
-    }
-  }
-
-  let ttsAttempts = 0,
-    ttsStarts = 0,
-    ttsLastErr = "";
-  const ttsSupported = () =>
-    !!window.speechSynthesis &&
-    typeof window.SpeechSynthesisUtterance === "function";
-  function refreshTtsBadge() {
-    const el = $id("ttsBadge");
-    const unavailable = !ttsSupported() || (ttsAttempts > 0 && ttsStarts === 0);
-    const msg =
-      $id("cbTTS").checked && unavailable
-        ? $id("cbOnline").checked
-          ? "朗读未就绪 · 点此重试"
-          : "本机语音未就绪 · 点此重试"
-        : "";
-    el.textContent = msg;
-    el.classList.toggle("hide", !msg);
-  }
-
-  const DICT_AUDIO = "https://dict.youdao.com/dictvoice?audio=";
-
-  const SILENT_WAV =
-    "data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA==";
-  let auEl = null,
-    auUnlocked = false,
-    auFail = 0,
-    auPlay = 0;
-  function auGet() {
-    if (!auEl) {
-      auEl = new Audio();
-      auEl.preload = "auto";
-
-      auEl.addEventListener("error", () => {
-        if (auUnlocked) {
-          auFail++;
-          refreshTtsBadge();
-        }
-      });
-      auEl.addEventListener("playing", () => {
-        auPlay++;
-        ttsStarts++;
-        refreshTtsBadge();
-      });
-    }
-    return auEl;
-  }
-
-  function auUnlock() {
-    if (auUnlocked) return;
-    auUnlocked = true;
-    try {
-      const a = auGet();
-      a.volume = 0;
-      a.src = SILENT_WAV;
-      const p = a.play();
-      if (p && p.catch) p.catch(() => {});
-    } catch (e) {}
-  }
-
-  const AU_MEM = new Map(); // 词 -> 成功过的方案下标
-  let auTok = 0; // 新请求作废旧请求：打字快时后词直接覆盖前词
-  function auPlans(word, cn) {
-    const w = String(word || "").trim(),
-      P = [];
-    if (!w) return P;
-    P.push({ k: "one", u: DICT_AUDIO + encodeURIComponent(w) + "&type=2" });
-    P.push({ k: "one", u: DICT_AUDIO + encodeURIComponent(w) + "&type=1" });
-
-    const parts = w
-      .replace(/[-—–\/]/g, " ")
-      .split(/\s+/)
-      .filter(Boolean);
-    if (parts.length > 1) P.push({ k: "seq", p: parts });
-    if (cn && String(cn).trim())
-      P.push({
-        k: "one",
-        u: DICT_AUDIO + encodeURIComponent(String(cn).trim()) + "&le=zh",
-      });
-    return P;
-  }
-
-  function playOne(a, url, mode, onOK, onFail) {
-    let settled = false,
-      started = false,
-      to = 0;
-    const fin = (ok) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(to);
-      a.removeEventListener("error", hErr);
-      a.removeEventListener("playing", hPlay);
-      a.removeEventListener("ended", hEnd);
-      ok ? onOK && onOK() : onFail && onFail();
-    };
-    const hErr = () => fin(false);
-    const hPlay = () => {
-      started = true;
-      if (mode === "start") fin(true);
-    };
-    const hEnd = () => {
-      if (mode === "end") fin(true);
-    };
-    a.addEventListener("error", hErr);
-    a.addEventListener("playing", hPlay);
-    a.addEventListener("ended", hEnd);
-
-    to = setTimeout(() => fin(started), mode === "end" ? 4000 : 2500);
-    try {
-      a.src = url;
-      const p = a.play();
-      if (p && p.catch) p.catch(() => fin(false));
-    } catch (e) {
-      fin(false);
-    }
-    renderTTSVol();
-  }
-  function runPlan(a, plan, onOK, onFail) {
-    if (plan.k === "one") {
-      playOne(a, plan.u, "start", onOK, onFail);
-      return;
-    }
-    const parts = plan.p;
-    let idx = 0;
-    (function next() {
-      if (idx >= parts.length) {
-        onOK && onOK();
-        return;
-      }
-      const last = idx === parts.length - 1;
-      playOne(
-        a,
-        DICT_AUDIO + encodeURIComponent(parts[idx]) + "&type=2",
-        last ? "start" : "end",
-        () => {
-          idx++;
-          next();
-        },
-        onFail,
-      );
-    })();
-  }
-  function auRun(word, cn) {
-    const w = String(word || "").trim();
-    const P = auPlans(w, cn);
-    if (!P.length) return;
-    const memo = AU_MEM.get(w);
-    const start = typeof memo === "number" && memo < P.length ? memo : 0;
-    const my = ++auTok;
-    let i = start,
-      tries = 0;
-    (function attempt() {
-      if (my !== auTok) return; // 被后一个词作废
-      if (tries++ >= P.length) return; // 全链失败：这个词确实念不了，放弃
-      const pl = P[i];
-      const a = auGet();
-      a.volume = ttsVolume(); // 同样「越打越响」
-      runPlan(
-        a,
-        pl,
-        () => {
-          if (my === auTok) AU_MEM.set(w, i);
-        }, // 记住这一级，下次直接走
-        () => {
-          if (my !== auTok) return;
-          i = (i + 1) % P.length;
-          attempt();
-        },
-      );
-    })();
-  }
-  function sayAudio(t, cn) {
-    if (!$id("cbOnline").checked) return;
-    try {
-      auRun(t, cn === undefined ? S.cn : cn);
-    } catch (e) {
-      if (auUnlocked) auFail++;
-    }
-  }
-  let ttsVoice = null,
-    ttsTok = 0,
-    ttsChannel = null,
-    ttsLastText = "";
-
-  try {
-    if (window.speechSynthesis && window.speechSynthesis.addEventListener) {
-      window.speechSynthesis.addEventListener("voiceschanged", function () {
-        ttsVoice = null;
-        pickVoice();
-      });
-    }
-  } catch (e) {}
-  function pickVoice() {
-    try {
-      const ss = window.speechSynthesis;
-      const vs = ss && ss.getVoices ? ss.getVoices() : [];
-      if (!vs || !vs.length) return ttsVoice; // 列表还没就绪：沿用上次选中的，别漂移
-      const v =
-        vs.find((x) => /^en[-_]?US/i.test(x.lang)) ||
-        vs.find((x) => /^en/i.test(x.lang)) ||
-        null;
-      if (v) ttsVoice = v;
-      return ttsVoice;
-    } catch (e) {
-      return ttsVoice;
-    }
-  }
-
-  function stopDict() {
-    try {
-      auTok++;
-    } catch (e) {}
-    try {
-      if (auEl) {
-        auEl.pause();
-        try {
-          auEl.currentTime = 0;
-        } catch (e) {}
-      }
-    } catch (e) {}
-  }
-  function say(t, cn, force) {
-    try {
-      if (!$id("cbTTS").checked) return; // 开关关了就不念
-      const cnx = cn === undefined ? S.cn : cn;
-      const txt = String(t == null ? "" : t);
-
-      if (!ttsSupported()) {
-        stopDict();
-        ttsChannel = "dict";
-        ttsLastText = txt;
-        sayAudio(t, cnx);
-        return;
-      }
-      const ss = window.speechSynthesis;
-
-      if (!force && txt && txt === ttsLastText && (ss.speaking || ss.pending))
-        return;
-      const my = ++ttsTok; // 新的一句：作废上一句的 watchdog / 延迟 speak / 回调
-      stopDict(); // 开 Web Speech 前先停掉可能在响的词典音频
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = "en-US";
-      u.rate = 0.92;
-      u.volume = ttsVolume(); // 越打越响
-      const v = pickVoice();
-      if (v) u.voice = v; // 显式选 en-US 嗓音，避开默认语种缺失
-
-      ttsAttempts++;
-      const wd = setTimeout(() => {
-        if (my !== ttsTok) return; // 已被更新的朗读取代：不兜底、不叠播
-        if (u.__started || ss.speaking || ss.pending) {
-          u.__started = true;
-          refreshTtsBadge();
-          return;
-        }
-
-        if (!u.__fb) {
-          u.__fb = true;
-          try {
-            ss.cancel();
-          } catch (e) {}
-          ttsChannel = "dict";
-          sayAudio(t, cnx);
-        }
-        refreshTtsBadge();
-      }, 1800);
-      u.onstart = () => {
-        if (my !== ttsTok) return;
-        u.__started = true;
-        ttsStarts++;
-        ttsLastErr = "";
-        clearTimeout(wd);
-        try {
-          ss.resume();
-        } catch (e) {}
-        refreshTtsBadge();
-      };
-      u.onerror = (e) => {
-        if (my !== ttsTok) return;
-        ttsLastErr = (e && e.error) || "error";
-        if (!u.__fb) {
-          u.__fb = true;
-          try {
-            ss.cancel();
-          } catch (e) {}
-          ttsChannel = "dict";
-          sayAudio(t, cnx);
-        }
-        refreshTtsBadge();
-      };
-      u.onend = () => {
-        if (my !== ttsTok) return;
-        clearTimeout(wd);
-        try {
-          ss.resume();
-        } catch (e) {}
-      };
-
-      ttsLastText = txt;
-      const busy = !!(ss.speaking || ss.pending);
-      if (!busy) {
-        ttsChannel = "web";
-        try {
-          ss.speak(u);
-        } catch (e) {}
-      } else {
-        try {
-          ss.cancel();
-        } catch (e) {}
-        setTimeout(() => {
-          if (my !== ttsTok) return;
-          ttsChannel = "web";
-          try {
-            ss.speak(u);
-          } catch (e) {}
-        }, 30);
-      }
-      renderTTSVol();
+  let speechState = { state: "idle", message: "" };
+  const pronunciation = createPronunciation({
+    onChange(value) {
+      speechState = value;
+      speechActive = ["loading", "speaking"].includes(value.state);
+      if (AU.master)
+        AU.master.gain.setTargetAtTime(
+          speechActive ? 0.12 : 0.5,
+          AU.ac.currentTime,
+          0.025,
+        );
       refreshTtsBadge();
-    } catch (e) {}
+    },
+    onVoicesChanged: renderVoices,
+  });
+  function renderVoices() {
+    const select = $id("ttsVoice"),
+      settings = pronunciation.preferences();
+    const voices = pronunciation.voices(),
+      preferred = chooseVoice(voices);
+    const option = (value, text) => {
+      const node = document.createElement("option");
+      node.value = value;
+      node.textContent = text;
+      return node;
+    };
+    select.replaceChildren(
+      option(
+        "",
+        preferred ? `自动（${preferred.name}）` : "未找到本机英语音色",
+      ),
+    );
+    for (const voice of englishVoices(voices))
+      select.append(option(voiceKey(voice), `${voice.name} · ${voice.lang}`));
+    select.value = englishVoices(voices).some(
+      (v) => voiceKey(v) === settings.voice,
+    )
+      ? settings.voice
+      : "";
   }
-
+  function refreshTtsBadge() {
+    const message = $id("cbTTS").checked ? speechState.message : "";
+    $id("ttsBadge").textContent = message;
+    $id("ttsBadge").classList.toggle("hide", !message);
+  }
+  function say(word = S.word) {
+    if (
+      !$id("cbTTS").checked ||
+      !S.running ||
+      S.done ||
+      blocked ||
+      S.status === "paused"
+    )
+      return;
+    pronunciation.speak(word, { online: $id("cbOnline").checked });
+  }
   function renderTTSVol() {
-    const el = $id("ttsVol");
-    if (!el) return;
-    const v = ttsVolume();
-    el.textContent = "🔊 " + Math.round(v * 100) + "%";
-    el.style.opacity = v >= 1 ? "1" : ".62";
+    const preferences = pronunciation.preferences();
+    $id("ttsVol").textContent = "重听单词";
+    $id("ttsVol").title =
+      `重听当前词 · 音量 ${Math.round(preferences.volume * 100)}%`;
+    $id("ttsVolumeLabel").textContent =
+      `${Math.round(preferences.volume * 100)}%`;
+  }
+  function configureSpeech(value) {
+    pronunciation.configure(value);
+    const settings = pronunciation.preferences();
+    $id("ttsRate").value = String(settings.rate);
+    $id("ttsVolume").value = String(settings.volume * 100);
+    renderVoices();
+    renderTTSVol();
   }
   function isTouch() {
     return window.matchMedia("(hover:none) and (pointer:coarse)").matches;
@@ -787,11 +503,7 @@ export function createTrainer({
     if (notify) onComplete(result);
   }
   function stopSpeech() {
-    ttsTok++;
-    stopDict();
-    try {
-      window.speechSynthesis?.cancel();
-    } catch {}
+    pronunciation.stop();
   }
   function process(out) {
     if (out.kind === "ignored") return;
@@ -854,6 +566,7 @@ export function createTrainer({
     renderStats();
     renderWrong();
     say(S.word, S.cn);
+    focusKeyboard();
   }
   function restore(deck, checkpoint, id) {
     activeDeck = structuredClone(deck);
@@ -873,6 +586,7 @@ export function createTrainer({
     renderStats();
     renderWrong();
     if (S.done) announceComplete(false);
+    else focusKeyboard();
   }
   function pause() {
     engine.pause();
@@ -884,6 +598,7 @@ export function createTrainer({
     if (!pausedByUser && !blocked) {
       engine.resume();
       renderStats();
+      focusKeyboard();
     }
   }
   function reset() {
@@ -901,6 +616,19 @@ export function createTrainer({
     process(engine.input(ch));
   }
   const kb = $id("kb");
+  const typingActions = new Set([
+    "ttsVol",
+    "ttsBadge",
+    "auBadge",
+    "btnNext",
+    "pauseButton",
+    "btnReset",
+  ]);
+  for (const id of typingActions)
+    $id(id).addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && document.activeElement === kb)
+        event.preventDefault();
+    });
   function setBlocked(value) {
     blocked = value;
     for (const id of ["kb", "btnNext", "pauseButton", "btnReset", "btnAgain"])
@@ -910,26 +638,34 @@ export function createTrainer({
   }
   let composing = false;
   function focusKeyboard() {
-    if (!S.running || S.done || S.status === "paused") return;
+    if (
+      blocked ||
+      !S.running ||
+      S.done ||
+      S.status === "paused" ||
+      composing ||
+      document.hidden ||
+      $id("practiceView").hidden ||
+      document.querySelector("dialog[open]")
+    )
+      return;
     kb.focus({ preventScroll: true });
     if (isTouch()) $id("wbox").scrollIntoView({ block: "center" });
   }
   $id("wbox").addEventListener("click", () => {
-    const wasUnlocked = ttsUnlocked;
     AU.unlock();
-    ttsUnlock();
     focusKeyboard();
-    if (S.running && (wasUnlocked || !isTouch())) say(S.word, S.cn, true);
-    justUnlockedTap = false;
+    say();
   });
   $id("wbox").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       focusKeyboard();
     }
   });
   document.addEventListener("keydown", (e) => {
     if (
+      e.defaultPrevented ||
       $id("practiceView").hidden ||
       document.querySelector("dialog[open]") ||
       e.isComposing ||
@@ -941,9 +677,17 @@ export function createTrainer({
     const target = e.target,
       editing =
         target !== kb &&
-        (target.matches("input,textarea,select,button,a") ||
+        ((target.closest(
+          "input,textarea,select,button,a,summary,[role=button]",
+        ) &&
+          target !== $id("wbox")) ||
           target.isContentEditable);
-    if (editing || e.ctrlKey || e.metaKey || e.altKey) return;
+    const action = target.closest("button");
+    const typingFromAction =
+      typingActions.has(action?.id) &&
+      (e.key === "Escape" || (e.key !== " " && isPracticeChar(e.key)));
+    if ((editing && !typingFromAction) || e.ctrlKey || e.metaKey || e.altKey)
+      return;
     if (e.key === "Escape") {
       e.preventDefault();
       process(engine.skip());
@@ -951,6 +695,7 @@ export function createTrainer({
     }
     if (isPracticeChar(e.key)) {
       e.preventDefault();
+      if (typingFromAction) focusKeyboard();
       keyInput(e.key);
     }
   });
@@ -987,13 +732,18 @@ export function createTrainer({
         await onRestart(activeDeck.id);
       } finally {
         b.disabled = false;
+        focusKeyboard();
       }
     });
-  $id("btnWrong").addEventListener("click", () => {
+  $id("btnWrong").addEventListener("click", async () => {
     if (activeDeck) {
       const ids = new Set(Object.keys(S.wrong));
       if (onWrong) {
-        onWrong([...ids]);
+        try {
+          await onWrong([...ids]);
+        } finally {
+          focusKeyboard();
+        }
         return;
       }
       start({
@@ -1010,6 +760,7 @@ export function createTrainer({
       renderStats();
     }
     $id("pauseButton").textContent = pausedByUser ? "继续练习" : "暂停";
+    if (!pausedByUser) focusKeyboard();
   });
   for (const id of ["cbShow", "cbCn"])
     $id(id).addEventListener("change", () => {
@@ -1018,19 +769,50 @@ export function createTrainer({
     });
   for (const id of ["cbSound", "cbTTS", "cbOnline"])
     $id(id).addEventListener("change", () => {
-      if (!$id("cbTTS").checked) stopSpeech();
+      stopSpeech();
+      if ($id("cbTTS").checked && id !== "cbSound") say();
       refreshTtsBadge();
       onPreferences();
     });
   $id("auBadge").addEventListener("click", () => {
     AU.unlock();
     refreshAuBadge();
+    focusKeyboard();
   });
-  $id("ttsBadge").addEventListener("click", () => {
-    ttsUnlock();
-    say(S.word, S.cn, true);
+  for (const id of ["ttsBadge", "ttsVol"])
+    $id(id).addEventListener("click", () => {
+      say();
+      focusKeyboard();
+    });
+  for (const id of ["ttsVoice", "ttsRate", "ttsVolume"])
+    $id(id).addEventListener("change", () => {
+      pronunciation.configure({
+        voice: $id("ttsVoice").value,
+        rate: Number($id("ttsRate").value),
+        volume: Number($id("ttsVolume").value) / 100,
+      });
+      renderTTSVol();
+      say();
+      onPreferences();
+    });
+  $id("ttsVolume").addEventListener("input", () => {
+    pronunciation.configure({ volume: Number($id("ttsVolume").value) / 100 });
+    renderTTSVol();
   });
-  $id("ttsVol").addEventListener("click", () => say(S.word, S.cn, true));
+  // Pointer changes should return to typing; Tab/arrow-key users keep their
+  // chosen control. Never use a blur timer that can steal focus from a dialog.
+  let pointerSettings = false;
+  const settings = document.querySelector(".practice-settings");
+  settings.addEventListener("pointerdown", () => {
+    pointerSettings = true;
+  });
+  settings.addEventListener("keydown", () => {
+    pointerSettings = false;
+  });
+  settings.addEventListener("change", () => {
+    if (pointerSettings) focusKeyboard();
+  });
+  configureSpeech({});
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       pause();
@@ -1048,6 +830,8 @@ export function createTrainer({
     start,
     restore,
     setBlocked,
+    configureSpeech,
+    speechPreferences: pronunciation.preferences,
     snapshot: () => engine.snapshot(),
     pause,
     resume,

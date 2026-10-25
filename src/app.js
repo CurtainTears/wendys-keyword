@@ -2191,14 +2191,15 @@ function savePreferences() {
   try {
     localStorage.setItem(
       "keyword.preferences",
-      JSON.stringify(
-        Object.fromEntries(
+      JSON.stringify({
+        ...Object.fromEntries(
           ["cbSound", "cbShow", "cbTTS", "cbCn", "cbOnline"].map((id) => [
             id,
             $(id).checked,
           ]),
         ),
-      ),
+        speech: trainer.speechPreferences(),
+      }),
     );
   } catch {
     message("浏览器未允许保存偏好，本次练习仍可继续。", true);
@@ -2225,6 +2226,7 @@ try {
   const prefs = JSON.parse(localStorage.getItem("keyword.preferences") || "{}");
   for (const key of ["cbSound", "cbShow", "cbTTS", "cbCn", "cbOnline"])
     if (typeof prefs[key] === "boolean") $(key).checked = prefs[key];
+  trainer.configureSpeech(prefs.speech);
 } catch {
   applyTheme("white");
 }

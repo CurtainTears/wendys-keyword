@@ -818,6 +818,30 @@ label > select {
 .settings-row .sw {
   background: var(--pnl);
 }
+.speech-settings {
+  align-items: start;
+}
+.speech-control {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+  min-width: 150px;
+  font-size: 13px;
+}
+.speech-control:first-child {
+  flex: 2;
+  min-width: 220px;
+}
+.speech-control select {
+  width: 100%;
+  min-width: 0;
+}
+.speech-control input[type="range"] {
+  width: 100%;
+  min-height: 40px;
+  padding: 0;
+  accent-color: var(--cy);
+}
 summary {
   cursor: pointer;
   color: var(--tx2);

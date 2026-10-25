@@ -370,7 +370,7 @@
                 class="ttsvol"
                 title="重听当前词"
               >
-                55%</button
+                重听单词</button
               ><button
                 type="button"
                 id="ttsBadge"
@@ -387,15 +387,48 @@
             </div>
             <details>
               <summary>发音与主题</summary>
+              <div class="settings-row speech-settings">
+                <label class="speech-control" for="ttsVoice"
+                  >英语音色
+                  <select id="ttsVoice">
+                    <option value="">自动选择本机英语音色</option>
+                  </select>
+                </label>
+                <label class="speech-control" for="ttsRate"
+                  >语速
+                  <select id="ttsRate">
+                    <option value="0.75">慢速 · 0.75×</option>
+                    <option value="0.9" selected>清晰 · 0.9×</option>
+                    <option value="1">正常 · 1×</option>
+                    <option value="1.1">稍快 · 1.1×</option>
+                  </select>
+                </label>
+                <label class="speech-control" for="ttsVolume"
+                  ><span
+                    >朗读音量
+                    <output id="ttsVolumeLabel" for="ttsVolume"
+                      >100%</output
+                    ></span
+                  >
+                  <input
+                    id="ttsVolume"
+                    type="range"
+                    min="20"
+                    max="100"
+                    step="10"
+                    value="100"
+                  />
+                </label>
+              </div>
               <div class="settings-row">
                 <label class="sw"
                   ><input
                     type="checkbox"
                     id="cbOnline"
-                  />允许在线词典发音</label
+                  />优先在线词典发音（美音）</label
                 >
                 <p class="muted">
-                  默认只用系统语音。开启后，语音失败时会将当前词或释义发送到有道。
+                  默认仅使用本机英语音色。开启后会将当前练习词发送到有道获取发音，不发送释义；在线失败时改用本机英语。
                 </p>
                 <label for="themeSelect">主题</label
                 ><select id="themeSelect">

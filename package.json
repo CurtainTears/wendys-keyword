@@ -1,6 +1,6 @@
 {
   "name": "keyword-workspace",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "个人词库、打字练习与账号同步",
   "main": "server.js",
   "scripts": {
