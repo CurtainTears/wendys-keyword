@@ -111,6 +111,14 @@
             >
               使用邀请码注册
             </button>
+            <button
+              id="buyInviteButton"
+              type="button"
+              class="text-button full-width"
+              hidden
+            >
+              购买邀请码 · ¥9.90
+            </button>
           </div>
         </form>
       </section>
@@ -534,6 +542,39 @@
             刷新列表
           </button>
         </div>
+        <section
+          class="payment-management"
+          aria-labelledby="paymentAdminHeading"
+        >
+          <div class="page-heading">
+            <div>
+              <h2 id="paymentAdminHeading">在线售码</h2>
+              <p id="paymentAdminSummary" class="muted">正在读取支付配置…</p>
+            </div>
+          </div>
+          <form id="paymentStockForm" class="payment-stock-form" hidden>
+            <label class="checkbox-label"
+              ><input id="paymentSaleEnabled" type="checkbox" />开放购买</label
+            >
+            <label
+              >当前可售余量<input
+                id="paymentAvailable"
+                type="number"
+                min="0"
+                max="100000"
+                value="0"
+                required
+            /></label>
+            <button id="paymentStockSave" class="btn g" type="submit">
+              保存销售设置
+            </button>
+          </form>
+          <p id="paymentAdminFeedback" class="form-error" role="status"></p>
+          <details>
+            <summary>最近 100 笔订单</summary>
+            <div id="paymentOrderList" class="payment-order-list"></div>
+          </details>
+        </section>
         <form id="inviteCreateForm" class="invite-create">
           <label
             >备注 <span class="muted">选填</span
@@ -593,6 +634,104 @@
       <span>KeyWord · 把练习留给自己。</span
       ><span id="storageFooter">登录后访问个人词库与练习进度</span>
     </footer>
+    <dialog
+      id="purchaseDialog"
+      class="small-dialog purchase-dialog"
+      aria-labelledby="purchaseHeading"
+    >
+      <div class="dialog-heading">
+        <div>
+          <p id="purchaseEnvironment" class="eyebrow">邀请码购买</p>
+          <h2 id="purchaseHeading">加入 KeyWord</h2>
+        </div>
+        <button
+          type="button"
+          class="icon-button"
+          data-close="purchaseDialog"
+          aria-label="关闭购买页面"
+        >
+          ×
+        </button>
+      </div>
+      <div class="dialog-body">
+        <div class="purchase-product">
+          <div>
+            <strong>普通账号注册邀请码</strong>
+            <p class="muted">一人一码 · 未使用前长期有效</p>
+          </div>
+          <div class="purchase-price">
+            <strong id="purchaseAmount">¥9.90</strong><span>一次性</span>
+          </div>
+        </div>
+        <p id="purchaseAvailability" class="muted" role="status">
+          正在读取销售状态…
+        </p>
+        <p id="purchaseError" class="form-error" role="alert"></p>
+        <button
+          id="purchaseCreate"
+          type="button"
+          class="btn full-width"
+          disabled
+        >
+          购买一个邀请码
+        </button>
+        <section
+          id="purchaseOrder"
+          class="purchase-order"
+          hidden
+          aria-labelledby="purchaseOrderHeading"
+        >
+          <h3 id="purchaseOrderHeading">订单状态</h3>
+          <p id="purchaseState" role="status" aria-live="polite"></p>
+          <p id="purchaseNumber" class="muted purchase-number"></p>
+          <div id="purchaseCodePanel" hidden>
+            <label
+              >你的邀请码<input
+                id="purchaseCode"
+                readonly
+                spellcheck="false" /></label
+            ><button id="purchaseUse" type="button" class="btn full-width">
+              用此码注册账号
+            </button>
+          </div>
+          <button id="purchasePay" type="button" class="btn full-width" hidden>
+            前往支付宝付款 · ¥9.90
+          </button>
+          <button id="purchaseRefresh" type="button" class="btn g full-width">
+            查询支付结果
+          </button>
+          <div class="purchase-secondary">
+            <button id="purchaseSave" type="button" class="text-button">
+              保存领取凭据</button
+            ><button
+              id="purchaseClose"
+              type="button"
+              class="text-button"
+              hidden
+            >
+              取消待付款订单
+            </button>
+          </div>
+          <p class="muted">
+            付款后回到此页领取。请保留领取凭据，勿转发给他人；换浏览器时可用它恢复订单。
+          </p>
+          <button
+            id="purchaseNew"
+            type="button"
+            class="text-button full-width"
+            hidden
+          >
+            再购买一个
+          </button>
+        </section>
+        <label class="purchase-recover"
+          >已有订单？导入领取凭据<input
+            id="purchaseRecover"
+            type="file"
+            accept="application/json,.json"
+        /></label>
+      </div>
+    </dialog>
     <dialog
       id="revokeInviteDialog"
       class="small-dialog"

@@ -17,3 +17,5 @@ Thumbs.db
 *.log
 .idea/
 .vscode/
+/.alipay-sandbox.json
+/.alipay-production.json

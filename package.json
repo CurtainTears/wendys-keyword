@@ -1,6 +1,6 @@
 {
   "name": "keyword-workspace",
-  "version": "2.5.3",
+  "version": "2.6.0",
   "description": "个人词库、打字练习与账号同步",
   "main": "server.js",
   "scripts": {
@@ -19,6 +19,7 @@
     "node": ">=24.15.0"
   },
   "dependencies": {
+    "alipay-sdk": "4.14.0",
     "better-auth": "1.7.12",
     "papaparse": "5.7.0"
   },

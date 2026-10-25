@@ -49,6 +49,8 @@ export class InvitationStore {
       ["created_by", "TEXT"],
       ["code_encrypted", "TEXT"],
       ["code_hint", "TEXT"],
+      ["validity", "TEXT NOT NULL DEFAULT 'dated'"],
+      ["suspended_at", "INTEGER"],
     ])
       if (!columns.has(column))
         db.exec(
@@ -93,14 +95,29 @@ export class InvitationStore {
       /[\u0000-\u001f\u007f]/.test(label)
     )
       throw new InputError("备注限 80 个普通字符");
+    return this.issue({ days, label, role, createdBy, validity: "dated" });
+  }
+  // Paid invitations have a separate lifetime contract; create() still accepts
+  // only 1–365 days and remains the manual/CLI entry point.
+  createPaid(orderId) {
+    if (!this.key) throw new Error("Paid invitations require the display key");
+    return this.issue({
+      days: null,
+      label: "购买邀请码 " + orderId,
+      role: "user",
+      createdBy: null,
+      validity: "permanent",
+    });
+  }
+  issue({ days, label, role, createdBy, validity }) {
     const token = randomBytes(20).toString("hex").toUpperCase();
     const code = "KW-" + token.match(/.{8}/g).join("-"),
       id = randomUUID(),
       createdAt = this.now(),
-      expiresAt = createdAt + days * DAY;
+      expiresAt = validity === "permanent" ? 0 : createdAt + days * DAY;
     this.db
       .prepare(
-        "INSERT INTO signup_invitations(id,code_hash,label,created_at,expires_at,granted_role,created_by,code_encrypted,code_hint) VALUES(?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO signup_invitations(id,code_hash,label,created_at,expires_at,granted_role,created_by,code_encrypted,code_hint,validity) VALUES(?,?,?,?,?,?,?,?,?,?)",
       )
       .run(
         id,
@@ -112,15 +129,24 @@ export class InvitationStore {
         createdBy,
         this.encrypt(code, id),
         token.slice(-8),
+        validity,
       );
-    return { id, code, label: label.trim(), createdAt, expiresAt, role };
+    return {
+      id,
+      code,
+      label: label.trim(),
+      createdAt,
+      expiresAt: expiresAt || null,
+      role,
+      validity,
+    };
   }
   assertUsable(code) {
     const hash = fingerprint(code);
     if (!hash) throw denied(!code);
     const row = this.db
       .prepare(
-        "SELECT id FROM signup_invitations WHERE code_hash=? AND used_at IS NULL AND revoked_at IS NULL AND expires_at>?",
+        "SELECT id FROM signup_invitations WHERE code_hash=? AND used_at IS NULL AND revoked_at IS NULL AND suspended_at IS NULL AND (validity='permanent' OR expires_at>?)",
       )
       .get(hash, this.now());
     if (!row) throw denied();
@@ -133,7 +159,7 @@ export class InvitationStore {
     const now = this.now();
     const row = this.db
       .prepare(
-        "UPDATE signup_invitations SET used_at=?,used_email=?,code_encrypted=NULL WHERE code_hash=? AND used_at IS NULL AND revoked_at IS NULL AND expires_at>? RETURNING id,granted_role",
+        "UPDATE signup_invitations SET used_at=?,used_email=?,code_encrypted=NULL WHERE code_hash=? AND used_at IS NULL AND revoked_at IS NULL AND suspended_at IS NULL AND (validity='permanent' OR expires_at>?) RETURNING id,granted_role",
       )
       .get(now, email, hash, now);
     if (!row) throw denied();
@@ -143,12 +169,15 @@ export class InvitationStore {
     const now = this.now();
     return this.db
       .prepare(
-        "SELECT id,label,created_at,expires_at,used_at,used_email,revoked_at,granted_role,created_by,code_encrypted,code_hint FROM signup_invitations ORDER BY created_at DESC,id",
+        "SELECT id,label,created_at,expires_at,used_at,used_email,revoked_at,granted_role,created_by,code_encrypted,code_hint,validity,suspended_at FROM signup_invitations ORDER BY created_at DESC,id",
       )
       .all()
       .map((r) => {
         const available =
-          r.used_at === null && r.revoked_at === null && r.expires_at > now;
+          r.used_at === null &&
+          r.revoked_at === null &&
+          r.suspended_at === null &&
+          (r.validity === "permanent" || r.expires_at > now);
         let code = null,
           displayError = "";
         if (reveal && available && r.code_encrypted && this.key) {
@@ -166,11 +195,14 @@ export class InvitationStore {
               ? "used"
               : r.revoked_at !== null
                 ? "revoked"
-                : r.expires_at <= now
-                  ? "expired"
-                  : "available",
+                : r.suspended_at !== null
+                  ? "suspended"
+                  : r.validity !== "permanent" && r.expires_at <= now
+                    ? "expired"
+                    : "available",
           createdAt: r.created_at,
-          expiresAt: r.expires_at,
+          expiresAt: r.validity === "permanent" ? null : r.expires_at,
+          validity: r.validity,
           usedAt: r.used_at,
           usedEmail: r.used_email,
           revokedAt: r.revoked_at,

@@ -172,6 +172,143 @@
 .invite-status.available {
   color: var(--cy);
 }
+.payment-management {
+  margin: 16px 0 32px;
+  padding: 24px;
+  background: var(--pnl);
+  border: 1px solid var(--ln);
+  border-radius: var(--radius);
+}
+.payment-management .page-heading {
+  margin-bottom: 16px;
+}
+.payment-stock-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 20px;
+}
+.payment-stock-form > label:not(.checkbox-label) {
+  max-width: 180px;
+}
+.payment-stock-form .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.payment-stock-form .checkbox-label input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+.payment-order-list {
+  margin-top: 16px;
+}
+.payment-admin-order {
+  padding: 16px 0;
+  border-top: 1px solid var(--ln);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+.payment-admin-order > div:first-child {
+  flex: 1 1 280px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.payment-order-actions,
+.purchase-secondary {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.payment-order-actions button,
+.purchase-secondary button {
+  min-height: 44px;
+}
+.purchase-dialog {
+  max-width: 520px;
+}
+.purchase-dialog .dialog-heading {
+  align-items: start;
+}
+.purchase-dialog .eyebrow {
+  margin-bottom: 6px;
+}
+.purchase-dialog .dialog-body {
+  display: grid;
+  gap: 16px;
+}
+.purchase-dialog p {
+  margin: 0;
+}
+.purchase-product {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--ln);
+}
+.purchase-product > div:first-child {
+  flex: 1;
+}
+.purchase-price {
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+.purchase-price span {
+  display: block;
+  color: var(--tx2);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-align: right;
+}
+.purchase-order {
+  display: grid;
+  gap: 16px;
+}
+.purchase-order h3 {
+  font-size: 18px;
+}
+.purchase-order .purchase-number {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.purchase-order input {
+  font:
+    13px ui-monospace,
+    monospace;
+  margin-bottom: 16px;
+}
+.purchase-recover {
+  padding-top: 16px;
+  border-top: 1px solid var(--ln);
+  font-size: 14px;
+  color: var(--tx2);
+}
+.purchase-recover input {
+  font-size: 14px;
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  .payment-management {
+    padding: 18px;
+  }
+  .payment-stock-form {
+    gap: 16px;
+  }
+  .payment-stock-form > button {
+    width: 100%;
+  }
+  .purchase-dialog input {
+    font-size: 16px;
+  }
+}
 @media (max-width: 860px) {
   .auth-gate {
     gap: 32px;

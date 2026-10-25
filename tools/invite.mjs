@@ -52,13 +52,17 @@ try {
       used: "已使用",
       expired: "已过期",
       revoked: "已撤销",
+      suspended: "退款核对中",
     };
     const rows = invitations.list().map((r) => ({
       ID: r.id,
       备注: r.label,
       状态: labels[r.status],
       权限: r.role === "admin" ? "管理员" : "普通账号",
-      有效期UTC: new Date(r.expiresAt).toISOString(),
+      有效期UTC:
+        r.expiresAt === null
+          ? "长期有效（未使用前）"
+          : new Date(r.expiresAt).toISOString(),
       使用邮箱: r.usedEmail || "",
     }));
     if (rows.length) console.table(rows);

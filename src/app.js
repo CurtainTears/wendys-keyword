@@ -3,6 +3,7 @@ import "./app.css";
 import { createTrainer } from "./trainer.js";
 import { local } from "./local.mjs";
 import { LearningClient } from "./learning.mjs";
+import { setupPurchases } from "./purchase.mjs";
 import {
   accountOwner,
   accountStamp,
@@ -1625,6 +1626,7 @@ $("migrateButton").addEventListener("click", () =>
   }),
 );
 function clearAdminView() {
+  purchases.clearAdmin();
   state.revokeInvite = null;
   state.invitations = [];
   state.invitePage = 0;
@@ -1648,9 +1650,12 @@ const inviteStatuses = {
   used: "已使用",
   expired: "已过期",
   revoked: "已撤销",
+  suspended: "退款核对中",
 };
 const inviteDate = (time) =>
-  new Date(time).toLocaleString("zh-CN", { hour12: false });
+  time === null
+    ? "长期有效（未使用前）"
+    : new Date(time).toLocaleString("zh-CN", { hour12: false });
 async function loadInvitations() {
   assertAdmin();
   const stamp = accountStamp(state);
@@ -1662,6 +1667,7 @@ async function loadInvitations() {
     state.invitations = data.invitations;
     $("adminFeedback").textContent = "";
     if (changed || !$("inviteList").children.length) renderInvitations();
+    await purchases.loadAdmin();
   } catch (error) {
     if (!accountCurrent(state, stamp)) return;
     if (error.status === 403) {
@@ -1757,7 +1763,13 @@ function renderInvitations() {
       ),
     );
     meta.append(
-      node("span", "muted", "有效至 " + inviteDate(invite.expiresAt)),
+      node(
+        "span",
+        "muted",
+        invite.expiresAt === null
+          ? inviteDate(null)
+          : "有效至 " + inviteDate(invite.expiresAt),
+      ),
     );
     if (invite.usedEmail)
       meta.append(node("span", "muted", "使用者 " + invite.usedEmail));
@@ -2271,8 +2283,18 @@ window.addEventListener("pagehide", () => {
   if (learning.active && !learning.frozen && !trainer.state.done)
     learning.capture(trainer.snapshot());
 });
+const purchases = setupPurchases({
+  api,
+  assertAdmin,
+  useCode(code) {
+    authMode("signup");
+    $("inviteCode").value = code;
+    $("authEmail").focus();
+  },
+});
 authMode("login");
 await synchronize();
 if (state.known && state.user) {
   await safe(route);
 } else syncLabel();
+await purchases.openReturned();

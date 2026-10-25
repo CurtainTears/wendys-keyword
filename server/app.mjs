@@ -7,6 +7,10 @@ import { betterAuth } from "better-auth";
 import { getMigrations } from "better-auth/db/migration";
 import { openDatabase, Store } from "./store.mjs";
 import { InvitationStore, invitationHooks } from "./invites.mjs";
+import { loadAlipayConfig, createAlipayGateway } from "./alipay.mjs";
+import { PaymentStore, PaymentService } from "./payments.mjs";
+import { paymentPriceFen } from "../shared/payment.mjs";
+import { createClientIPResolver } from "./client-ip.mjs";
 import { InputError, makeBackup } from "../shared/words.mjs";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -68,6 +72,9 @@ function localSecret(dataDir) {
 }
 
 export async function createApp(options = {}) {
+  const clientIP = createClientIPResolver(
+    options.trustedProxyCidrs ?? process.env.TRUSTED_PROXY_CIDRS ?? "",
+  );
   const dataDir = path.resolve(
     options.dataDir || process.env.DATA_DIR || path.join(ROOT, "data"),
   );
@@ -191,6 +198,177 @@ export async function createApp(options = {}) {
     databaseQueue = result.catch(() => {});
     return result;
   };
+  let paymentGateway = options.paymentGateway || null,
+    paymentConfigurationError = "";
+  if (options.paymentGateway === undefined) {
+    try {
+      const config = loadAlipayConfig({
+        origin,
+        production,
+        env: options.paymentEnv || process.env,
+      });
+      if (config) paymentGateway = createAlipayGateway(config);
+    } catch {
+      // A broken optional payment configuration must not disable existing users.
+      paymentConfigurationError =
+        "支付配置未通过校验，请检查环境、文件权限及配置字段";
+    }
+  }
+  const paymentStore = new PaymentStore(db, invites, {
+    config: paymentGateway?.config,
+    secret,
+    ...(options.paymentNow ? { now: options.paymentNow } : {}),
+  });
+  const payments = new PaymentService(
+    paymentStore,
+    paymentGateway,
+    exclusiveDatabase,
+  );
+  payments.start();
+  const paymentStatus = () => ({
+    configured: Boolean(paymentGateway),
+    mode: paymentGateway?.config.mode || "off",
+    amountFen: paymentPriceFen(paymentGateway?.config.mode),
+    ...paymentStore.stock(),
+  });
+  async function handlePayments(req, res, pathname) {
+    if (pathname === "/api/payments/alipay/notify" && req.method === "POST") {
+      let reply = "fail";
+      try {
+        if (
+          !/^application\/x-www-form-urlencoded(?:;|$)/i.test(
+            req.headers["content-type"] || "",
+          )
+        )
+          throw new InputError("通知格式无效");
+        const chunks = [];
+        let size = 0;
+        for await (const chunk of req) {
+          size += chunk.length;
+          if (size > 65536) throw new InputError("通知过大", 413);
+          chunks.push(chunk);
+        }
+        const form = new URLSearchParams(
+            Buffer.concat(chunks).toString("utf8"),
+          ),
+          params = Object.create(null);
+        for (const [key, value] of form) {
+          if (Object.hasOwn(params, key)) throw new InputError("通知参数重复");
+          params[key] = value;
+        }
+        await payments.notify(params);
+        reply = "success";
+      } catch {
+        // Plain fail asks Alipay to retry. Do not log signed payloads or keys.
+      }
+      res.writeHead(200, {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+      });
+      res.end(reply);
+      return true;
+    }
+    if (pathname === "/api/purchase/status" && req.method === "GET") {
+      const status = await exclusiveDatabase(paymentStatus);
+      // Only availability is public, never order IDs or administrator settings.
+      send(res, 200, {
+        ok: true,
+        configured: status.configured,
+        mode: status.mode,
+        amountFen: status.amountFen,
+        available: status.configured && status.enabled && status.available > 0,
+      });
+      return true;
+    }
+    if (pathname === "/api/purchase/orders" && req.method === "POST") {
+      const body = await readBody(req, 4096);
+      send(res, 201, {
+        ok: true,
+        order: await payments.create(body, clientIP(req)),
+      });
+      return true;
+    }
+    const order = pathname.match(
+      /^\/api\/purchase\/orders\/([a-f0-9-]{36})(?:\/(refresh|pay|close))?$/,
+    );
+    if (
+      order &&
+      ((req.method === "GET" && !order[2]) ||
+        (req.method === "POST" && order[2]))
+    ) {
+      const receipt = req.headers["x-keyword-receipt"];
+      if (req.method === "POST") await readBody(req, 4096);
+      if (order[2] === "pay")
+        send(res, 200, {
+          ok: true,
+          paymentUrl: await payments.pay(order[1], receipt),
+        });
+      else
+        send(res, 200, {
+          ok: true,
+          order: await (order[2] === "refresh"
+            ? payments.refresh(order[1], receipt)
+            : order[2] === "close"
+              ? payments.close(order[1], receipt)
+              : payments.read(order[1], receipt)),
+        });
+      return true;
+    }
+    const admin =
+      pathname === "/api/admin/payments" ||
+      pathname === "/api/admin/payments/stock" ||
+      /^\/api\/admin\/payments\/[a-f0-9-]{36}\/(refresh|close|refund|refund-query)$/.test(
+        pathname,
+      );
+    if (!admin) return false;
+    const body = req.method === "POST" ? await readBody(req, 4096) : null;
+    const user = await exclusiveDatabase(async () => {
+      const user = (await getSession(req, res))?.user;
+      checkAccount(req, user);
+      if (!user) throw new InputError("请先登录", 401);
+      if (user.role !== "admin") throw new InputError("仅管理员可访问", 403);
+      return user;
+    });
+    if (pathname === "/api/admin/payments" && req.method === "GET") {
+      send(
+        res,
+        200,
+        await exclusiveDatabase(() => ({
+          ok: true,
+          ...paymentStatus(),
+          configurationError: paymentConfigurationError,
+          orders: paymentStore.list(),
+        })),
+      );
+    } else if (
+      pathname === "/api/admin/payments/stock" &&
+      req.method === "POST"
+    ) {
+      send(res, 200, {
+        ok: true,
+        stock: await exclusiveDatabase(() =>
+          paymentStore.setStock(body, user.id),
+        ),
+      });
+    } else {
+      const action = pathname.match(
+        /^\/api\/admin\/payments\/([a-f0-9-]{36})\/(refresh|close|refund|refund-query)$/,
+      );
+      if (!action || req.method !== "POST")
+        throw new InputError("支付管理接口不存在或方法不支持", 404);
+      const [, id, operation] = action;
+      const result =
+        operation === "refund"
+          ? await payments.refund(id, user.id, body.confirmation)
+          : operation === "refund-query"
+            ? await payments.refundQuery(id, user.id)
+            : operation === "close"
+              ? await payments.close(id, null, { admin: true, actor: user.id })
+              : await payments.refresh(id, null, { admin: true });
+      send(res, 200, { ok: true, order: result });
+    }
+    return true;
+  }
   const handleApi = async (req, res, url, pathname) => {
     if (pathname.startsWith("/api/auth/")) {
       if (!["GET", "POST"].includes(req.method))
@@ -213,10 +391,7 @@ export async function createApp(options = {}) {
           ].includes(key)
         )
           headers.set(key, String(value));
-      headers.set(
-        "x-keyword-client-ip",
-        req.socket.remoteAddress || "127.0.0.1",
-      );
+      headers.set("x-keyword-client-ip", clientIP(req));
       const response = await auth.handler(
         new Request(origin + url.pathname + url.search, {
           method: req.method,
@@ -492,10 +667,14 @@ export async function createApp(options = {}) {
       const mutating = !["GET", "HEAD", "OPTIONS"].includes(req.method);
       if (
         mutating &&
+        !(
+          pathname === "/api/payments/alipay/notify" && req.method === "POST"
+        ) &&
         (!trustedOrigins.includes(req.headers.origin) ||
           req.headers["sec-fetch-site"] === "cross-site")
       )
         throw new InputError("请求来源不受信任", 403);
+      if (await handlePayments(req, res, pathname)) return;
       if (pathname.startsWith("/api/")) {
         // Read bounded bodies before taking the DB gate; slow uploads must not
         // block login, checkpoint uploads or library reads.
@@ -530,7 +709,9 @@ export async function createApp(options = {}) {
       }
       // Only built assets are public; never serve repository files or follow external symlinks.
       const relative =
-        pathname === "/" || pathname === "/index.html"
+        pathname === "/" ||
+        pathname === "/index.html" ||
+        pathname === "/payment/return"
           ? "index.html"
           : pathname.slice(1);
       if (!(
@@ -589,9 +770,12 @@ export async function createApp(options = {}) {
     db,
     auth,
     invites,
+    payments,
+    paymentStore,
     origin,
     close: async () => {
       await new Promise((resolve) => server.close(resolve));
+      await payments.stop();
       await vite?.close();
       db.close();
     },
