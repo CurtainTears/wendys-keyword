@@ -5,7 +5,7 @@ import { createTrainer } from "../src/trainer.js";
 
 // Small DOM fixture for the real trainer controller, without a browser package.
 // Browser acceptance also exercises the actual native focus and key events.
-function fixture(t, options = {}) {
+function fixture(t, { touch = false, ...options } = {}) {
   class Element {
     listeners = new Map();
     children = [];
@@ -74,7 +74,9 @@ function fixture(t, options = {}) {
     document: doc,
     window: {
       matchMedia: (query) => ({
-        matches: query.includes("prefers-reduced-motion"),
+        matches:
+          query.includes("prefers-reduced-motion") ||
+          (touch && query.includes("pointer:coarse")),
       }),
     },
   })) {
@@ -121,7 +123,7 @@ function fixture(t, options = {}) {
 
 test("Replay, skip, resume and asynchronous restart all return to typing", async (t) => {
   const { trainer, nodes, doc, click } = fixture(t);
-  const kb = nodes.get("kb");
+  const kb = nodes.get("stage");
   assert.equal(doc.activeElement, kb);
   for (const id of ["ttsVol", "auBadge", "btnNext", "btnReset"]) {
     await click(id);
@@ -140,22 +142,22 @@ test("No focus recovery steals from an open dialog, another view, or a blocked r
   const { trainer, nodes, doc, click } = fixture(t);
   doc.modal = nodes.get("authDialog");
   await click("ttsVol");
-  assert.notEqual(doc.activeElement, nodes.get("kb"));
+  assert.notEqual(doc.activeElement, nodes.get("stage"));
   doc.modal = null;
   nodes.get("practiceView").hidden = true;
   await click("btnReset");
-  assert.notEqual(doc.activeElement, nodes.get("kb"));
+  assert.notEqual(doc.activeElement, nodes.get("stage"));
   nodes.get("practiceView").hidden = false;
   trainer.setBlocked(true);
   await click("wbox");
-  assert.notEqual(doc.activeElement, nodes.get("kb"));
+  assert.notEqual(doc.activeElement, nodes.get("stage"));
 });
 test("Pointer settings return to typing; keyboard settings keep native navigation", async (t) => {
   const { nodes, doc, settings } = fixture(t);
   nodes.get("cbCn").focus();
   await settings.fire("pointerdown");
   await settings.fire("change");
-  assert.equal(doc.activeElement, nodes.get("kb"));
+  assert.equal(doc.activeElement, nodes.get("stage"));
   nodes.get("ttsRate").focus();
   await settings.fire("keydown", { key: "ArrowDown" });
   await settings.fire("change");
@@ -168,7 +170,7 @@ test("A browser retaining a practice-action button focus still accepts the first
   const event = await doc.fire("keydown", { target: nodes.get("ttsVol"), key });
   assert.equal(event.defaultPrevented, true);
   assert.equal(trainer.state.typed, 1);
-  assert.equal(doc.activeElement, nodes.get("kb"));
+  assert.equal(doc.activeElement, nodes.get("stage"));
   const before = trainer.state.keystrokes;
   await doc.fire("keydown", { target: nodes.get("ttsVol"), key: " " });
   assert.equal(trainer.state.keystrokes, before);
@@ -186,4 +188,124 @@ test("Summary Space and IME text do not enter the practice word", async (t) => {
   await doc.fire("keydown", { target: nodes.get("kb"), key: "a" });
   await nodes.get("kb").fire("compositionend");
   assert.equal(trainer.state.keystrokes, before);
+});
+
+test("Native IME pre-edit is never cleared while composing; Chinese commit does not count as a typo", async (t) => {
+  const { trainer, nodes, doc } = fixture(t, { touch: true });
+  const kb = nodes.get("kb");
+  assert.equal(doc.activeElement, kb);
+  await kb.fire("compositionstart");
+  kb.value = "n";
+  await kb.fire("input", {
+    isComposing: true,
+    inputType: "insertCompositionText",
+  });
+  assert.equal(kb.value, "n");
+  kb.value = "ni";
+  await kb.fire("input", {
+    isComposing: true,
+    inputType: "insertCompositionText",
+  });
+  assert.equal(kb.value, "ni");
+  await kb.fire("compositionend", { data: "你" });
+  assert.equal(kb.value, "");
+  assert.equal(trainer.state.keystrokes, 0);
+  await doc.fire("keydown", {
+    target: kb,
+    key: trainer.state.word[0],
+    isComposing: false,
+  });
+  assert.equal(trainer.state.typed, 1);
+});
+
+test("Switching back to English recovers even if the IME never sent compositionend", async (t) => {
+  const { trainer, nodes, doc } = fixture(t, { touch: true });
+  const kb = nodes.get("kb");
+  await kb.fire("compositionstart");
+  kb.value = "pin";
+  await kb.fire("input", { isComposing: true });
+  for (const key of trainer.state.word.slice(0, 2))
+    await doc.fire("keydown", {
+      target: kb,
+      key,
+      keyCode: 65,
+      isComposing: false,
+    });
+  assert.equal(trainer.state.typed, 2);
+  assert.equal(kb.value, "");
+});
+
+test("IME boundary keyCode229 never types a character or skips the word", async (t) => {
+  const { trainer, nodes, doc } = fixture(t);
+  for (const key of [trainer.state.word[0], "Escape", " "])
+    await doc.fire("keydown", {
+      target: nodes.get("stage"),
+      key,
+      keyCode: 229,
+      isComposing: false,
+    });
+  assert.equal(trainer.state.keystrokes, 0);
+  assert.equal(trainer.state.skipped, 0);
+});
+
+test("Desktop English practice accepts physical Latin keys while Chinese IME reports Process", async (t) => {
+  const { trainer, nodes, doc } = fixture(t);
+  assert.equal(doc.activeElement, nodes.get("stage"));
+  for (const character of trainer.state.word.slice(0, 2)) {
+    const event = await doc.fire("keydown", {
+      target: nodes.get("stage"),
+      key: "Process",
+      code: "Key" + character.toUpperCase(),
+      keyCode: 229,
+      isComposing: true,
+    });
+    assert.equal(event.defaultPrevented, true);
+  }
+  assert.equal(trainer.state.typed, 2);
+  const before = trainer.state.keystrokes;
+  await doc.fire("keydown", {
+    target: nodes.get("ttsVoice"),
+    key: "Process",
+    code: "KeyA",
+    keyCode: 229,
+    isComposing: true,
+  });
+  assert.equal(trainer.state.keystrokes, before);
+});
+
+test("Committed Latin composition is counted once, not again by the final composition input", async (t) => {
+  const { trainer, nodes } = fixture(t, { touch: true });
+  const kb = nodes.get("kb"),
+    text = trainer.state.word.slice(0, 2);
+  await kb.fire("compositionstart");
+  kb.value = text;
+  await kb.fire("input", {
+    isComposing: true,
+    inputType: "insertCompositionText",
+  });
+  await kb.fire("compositionend", { data: text });
+  kb.value = text;
+  await kb.fire("input", {
+    isComposing: false,
+    inputType: "insertFromComposition",
+  });
+  assert.equal(trainer.state.typed, 2);
+  assert.equal(trainer.state.keystrokes, 2);
+  assert.equal(kb.value, "");
+});
+
+test("Blur and round changes abandon composition; late commits cannot type into a new round", async (t) => {
+  const { trainer, nodes, doc, deck, click } = fixture(t, { touch: true });
+  const kb = nodes.get("kb");
+  await kb.fire("compositionstart");
+  kb.value = "pin";
+  await kb.fire("blur");
+  await kb.fire("compositionend", { data: "clear" });
+  assert.equal(trainer.state.keystrokes, 0);
+  await click("wbox");
+  assert.equal(doc.activeElement, kb);
+  await kb.fire("compositionstart");
+  trainer.start(deck);
+  await kb.fire("compositionend", { data: "clear" });
+  assert.equal(trainer.state.keystrokes, 0);
 });

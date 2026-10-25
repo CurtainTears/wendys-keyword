@@ -481,7 +481,7 @@ export function createTrainer({
     if (!S.done || completedId === S.id) return;
     completedId = S.id;
     stopSpeech();
-    $id("kb").blur();
+    keyboardTarget().blur();
     const result = engine.result(),
       m = engine.metrics();
     $id("dAcc").textContent = m.accuracy + "%";
@@ -549,6 +549,7 @@ export function createTrainer({
     if (["word", "skip"].includes(out.kind)) say(S.word, S.cn);
   }
   function start(deck) {
+    clearComposition();
     activeDeck = structuredClone(deck);
     stopSpeech();
     completedId = null;
@@ -569,6 +570,7 @@ export function createTrainer({
     focusKeyboard();
   }
   function restore(deck, checkpoint, id) {
+    clearComposition();
     activeDeck = structuredClone(deck);
     stopSpeech();
     completedId = null;
@@ -602,6 +604,7 @@ export function createTrainer({
     }
   }
   function reset() {
+    clearComposition();
     stopSpeech();
     engine.pause();
     S.running = false;
@@ -611,11 +614,17 @@ export function createTrainer({
     $id("practiceEmpty").hidden = false;
   }
   function keyInput(ch) {
-    if (blocked) return;
+    if (
+      blocked ||
+      $id("practiceView").hidden ||
+      document.querySelector("dialog[open]")
+    )
+      return;
     AU.unlock();
     process(engine.input(ch));
   }
   const kb = $id("kb");
+  const keyboardTarget = () => (isTouch() ? kb : $id("stage"));
   const typingActions = new Set([
     "ttsVol",
     "ttsBadge",
@@ -626,7 +635,10 @@ export function createTrainer({
   ]);
   for (const id of typingActions)
     $id(id).addEventListener("pointerdown", (event) => {
-      if (event.pointerType === "mouse" && document.activeElement === kb)
+      if (
+        event.pointerType === "mouse" &&
+        document.activeElement === keyboardTarget()
+      )
         event.preventDefault();
     });
   function setBlocked(value) {
@@ -636,20 +648,26 @@ export function createTrainer({
     $id("btnWrong").disabled = value || !Object.keys(S.wrong).length;
     if (value) pause();
   }
-  let composing = false;
+  let composing = false,
+    compositionRound = null;
+  function clearComposition() {
+    composing = false;
+    compositionRound = null;
+    kb.value = "";
+  }
   function focusKeyboard() {
     if (
       blocked ||
       !S.running ||
       S.done ||
       S.status === "paused" ||
-      composing ||
+      (composing && document.activeElement === kb) ||
       document.hidden ||
       $id("practiceView").hidden ||
       document.querySelector("dialog[open]")
     )
       return;
-    kb.focus({ preventScroll: true });
+    keyboardTarget().focus({ preventScroll: true });
     if (isTouch()) $id("wbox").scrollIntoView({ block: "center" });
   }
   $id("wbox").addEventListener("click", () => {
@@ -663,62 +681,122 @@ export function createTrainer({
       focusKeyboard();
     }
   });
+  function physicalLatinKey(event) {
+    if (/^Key[A-Z]$/.test(event.code || ""))
+      return event.code.slice(3).toLowerCase();
+    if (/^Digit[0-9]$/.test(event.code || "")) {
+      const number = Number(event.code.slice(5));
+      return event.shiftKey ? ")!@#$%^&*("[number] : String(number);
+    }
+    const punctuation = {
+      Space: "  ",
+      Minus: "-_",
+      Equal: "=+",
+      Quote: "'\"",
+      Comma: ",<",
+      Period: ".>",
+      Slash: "/?",
+      Semicolon: ";:",
+    };
+    return punctuation[event.code]?.[event.shiftKey ? 1 : 0] || null;
+  }
   document.addEventListener("keydown", (e) => {
+    const target = e.target,
+      action = target.closest("button");
+    // The desktop practice surface is not a text editor. For IME-owned
+    // hardware keys only, read the Latin key position rather than "Process".
+    // Forms, mobile pre-edit and shortcuts keep their native IME behavior.
+    const desktopPractice =
+      !isTouch() && (target === $id("stage") || typingActions.has(action?.id));
+    const physical =
+      desktopPractice && (e.keyCode === 229 || e.key === "Process")
+        ? physicalLatinKey(e)
+        : null;
+    const key = physical || e.key;
     if (
       e.defaultPrevented ||
       $id("practiceView").hidden ||
       document.querySelector("dialog[open]") ||
-      e.isComposing ||
-      composing ||
+      ((e.isComposing || e.keyCode === 229 || e.key === "Process") &&
+        !physical) ||
+      e.key === "Dead" ||
       !S.running ||
       S.status === "paused"
     )
       return;
-    const target = e.target,
-      editing =
-        target !== kb &&
-        ((target.closest(
-          "input,textarea,select,button,a,summary,[role=button]",
-        ) &&
-          target !== $id("wbox")) ||
-          target.isContentEditable);
-    const action = target.closest("button");
+    // Some IMEs omit compositionend on input-source switches. A real,
+    // non-IME key proves composition has ended; do not keep a sticky lock.
+    if (composing && (physical || e.isComposing === false)) clearComposition();
+    if (composing) return;
+    const editing =
+      target !== kb &&
+      ((target.closest(
+        "input,textarea,select,button,a,summary,[role=button]",
+      ) &&
+        target !== $id("wbox")) ||
+        target.isContentEditable);
     const typingFromAction =
       typingActions.has(action?.id) &&
-      (e.key === "Escape" || (e.key !== " " && isPracticeChar(e.key)));
+      (key === "Escape" || (key !== " " && isPracticeChar(key)));
     if ((editing && !typingFromAction) || e.ctrlKey || e.metaKey || e.altKey)
       return;
-    if (e.key === "Escape") {
+    if (key === "Escape") {
       e.preventDefault();
       process(engine.skip());
       return;
     }
-    if (isPracticeChar(e.key)) {
+    if (isPracticeChar(key)) {
       e.preventDefault();
       if (typingFromAction) focusKeyboard();
-      keyInput(e.key);
+      keyInput(key);
     }
   });
   kb.addEventListener("beforeinput", (e) => {
-    if (composing || e.isComposing || document.querySelector("dialog[open]"))
+    if (
+      composing ||
+      e.isComposing ||
+      e.inputType === "insertCompositionText" ||
+      document.querySelector("dialog[open]")
+    )
       return;
+    if (e.inputType === "insertFromComposition") {
+      e.preventDefault();
+      return;
+    }
     if (isPracticeChar(e.data)) {
       e.preventDefault();
       keyInput(e.data);
     }
   });
-  kb.addEventListener("input", () => {
+  kb.addEventListener("input", (e) => {
+    // Never overwrite the native pre-edit buffer: doing so can abort the
+    // composition without an end event and leave every later key blocked.
+    if (composing || e.isComposing) return;
     const value = kb.value;
     kb.value = "";
-    if (!composing && isPracticeChar(value)) keyInput(value);
+    if (
+      ["insertCompositionText", "insertFromComposition"].includes(e.inputType)
+    )
+      return;
+    if (isPracticeChar(value)) keyInput(value);
   });
   kb.addEventListener("compositionstart", () => {
     composing = true;
+    compositionRound = S.id;
   });
-  kb.addEventListener("compositionend", () => {
-    composing = false;
-    kb.value = "";
+  kb.addEventListener("compositionend", (event) => {
+    if (!composing || compositionRound !== S.id) {
+      clearComposition();
+      return;
+    }
+    const text = String(event.data || "").normalize("NFC");
+    clearComposition();
+    // Accept committed Latin text once (e.g. mobile English suggestions),
+    // never feed Chinese candidates or unfinished pinyin into the trainer.
+    if (text && [...text].every(isPracticeChar))
+      for (const character of text) keyInput(character);
   });
+  kb.addEventListener("blur", clearComposition);
   $id("btnNext").addEventListener("click", () => {
     process(engine.skip());
     focusKeyboard();
@@ -816,7 +894,7 @@ export function createTrainer({
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       pause();
-      kb.blur();
+      keyboardTarget().blur();
     } else if (
       !$id("practiceView").hidden &&
       !document.querySelector("dialog[open]")

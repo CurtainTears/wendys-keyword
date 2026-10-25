@@ -278,7 +278,7 @@
             </div>
             <span id="metaTxt">就绪</span>
           </div>
-          <div id="stage">
+          <div id="stage" tabindex="-1" aria-label="单词键盘练习">
             <div class="stats">
               <div class="stat">
                 <div class="sv c-cy" id="sAcc">100%</div>
@@ -315,7 +315,7 @@
                 tabindex="0"
                 aria-label="点击开始输入或重听单词"
               >
-                <div class="word" id="word"></div>
+                <div class="word" id="word" lang="en"></div>
                 <div class="cn" id="cn"></div>
               </div>
               <p class="hint">点词框唤起键盘 · Esc 跳过 · Tab 正常移动焦点</p>
@@ -447,6 +447,7 @@
         <input
           id="kb"
           type="text"
+          lang="en"
           autocomplete="off"
           autocorrect="off"
           autocapitalize="off"
