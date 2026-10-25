@@ -1,5 +1,12 @@
 # 依赖
 node_modules/
+dist/
+data/
+backups/
+.cache/
+.env
+.env.*
+!.env.example
 
 # 运行时数据与本地备份（仓库里只放空的 leaderboard.json 模板）
 leaderboard.backup.json

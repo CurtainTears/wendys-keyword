@@ -1,0 +1,9 @@
+node_modules/
+dist/
+data/
+backups/
+.cache/
+seed/decks.json
+licenses/
+words.txt
+leaderboard.json

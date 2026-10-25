@@ -1,0 +1,23 @@
+services:
+  keyword:
+    image: ghcr.io/curtaintears/wendys-keyword:${KEYWORD_TAG:-latest}
+    restart: unless-stopped
+    init: true
+    ports:
+      - "127.0.0.1:${PORT:-3000}:3000"
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN to your HTTPS public URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set a private random secret of at least 32 characters}
+    volumes:
+      - keyword-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+
+volumes:
+  keyword-data:

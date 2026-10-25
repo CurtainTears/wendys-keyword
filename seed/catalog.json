@@ -1,0 +1,111 @@
+{
+  "format": "keyword-catalog",
+  "version": 1,
+  "release": "ecdict-2026-10-24.1",
+  "source": {
+    "name": "ECDICT",
+    "repository": "https://github.com/skywind3000/ECDICT",
+    "revision": "ab22ad36302cafc6349a050e2b60894855208055",
+    "committedAt": "2026-10-24T09:15:06Z",
+    "sourceRows": 770611,
+    "license": "MIT",
+    "licenseFile": "licenses/ECDICT-MIT.txt"
+  },
+  "retiredDeckIds": [
+    "builtin-basic",
+    "builtin-mid",
+    "builtin-hard",
+    "builtin-topic-0",
+    "builtin-topic-1",
+    "builtin-topic-2",
+    "builtin-topic-3",
+    "builtin-topic-4",
+    "builtin-topic-5",
+    "builtin-topic-6",
+    "builtin-topic-7",
+    "builtin-topic-8",
+    "builtin-topic-9",
+    "builtin-topic-10"
+  ],
+  "decks": [
+    {
+      "id": "builtin-ecdict-freq3000",
+      "title": "英语高频 3000",
+      "wordCount": 3000,
+      "position": 0
+    },
+    {
+      "id": "builtin-ecdict-freq5000",
+      "title": "英语高频 5000",
+      "wordCount": 5000,
+      "position": 1
+    },
+    {
+      "id": "builtin-ecdict-zk",
+      "title": "中考英语",
+      "wordCount": 1603,
+      "position": 2
+    },
+    {
+      "id": "builtin-ecdict-gk",
+      "title": "高考英语",
+      "wordCount": 3677,
+      "position": 3
+    },
+    {
+      "id": "builtin-ecdict-cet4",
+      "title": "大学英语四级 CET-4",
+      "wordCount": 3849,
+      "position": 4
+    },
+    {
+      "id": "builtin-ecdict-cet6",
+      "title": "大学英语六级 CET-6",
+      "wordCount": 5407,
+      "position": 5
+    },
+    {
+      "id": "builtin-ecdict-ky",
+      "title": "考研英语",
+      "wordCount": 4801,
+      "position": 6
+    },
+    {
+      "id": "builtin-ecdict-ielts",
+      "title": "雅思 IELTS",
+      "wordCount": 5040,
+      "position": 7
+    },
+    {
+      "id": "builtin-ecdict-toefl",
+      "title": "托福 TOEFL",
+      "wordCount": 6974,
+      "position": 8
+    },
+    {
+      "id": "builtin-ecdict-gre",
+      "title": "GRE 词汇",
+      "wordCount": 7504,
+      "position": 9
+    }
+  ],
+  "totalEntries": 46855,
+  "distinctTargets": 15283,
+  "glossary": {
+    "policy": "保留通用释义；有通用义项时省去单独的专业领域释义行；仅有专业义项时完整保留",
+    "overridesFile": "seed/meaning-overrides.json",
+    "overriddenTerms": [
+      "a",
+      "as",
+      "be",
+      "can",
+      "do",
+      "have",
+      "the",
+      "to",
+      "will",
+      "would"
+    ],
+    "omittedDomainLines": 5289
+  }
+}

@@ -1,14 +1,30 @@
 {
-  "name": "wendys-keyword",
-  "version": "1.0.0",
-  "description": "Wendy's KeyWord — 视频单词打字练习器 + 云端排行榜（单文件前端，零依赖后端）",
+  "name": "keyword-workspace",
+  "version": "2.5.0",
+  "description": "个人词库、打字练习与账号同步",
   "main": "server.js",
   "scripts": {
+    "prestart": "npm run build",
     "start": "node server.js",
-    "dupcheck": "python tools/dupcheck.py"
+    "dev": "node server.js --dev",
+    "build": "vite build",
+    "test": "node --test tests/*.test.mjs",
+    "backup": "node tools/backup.mjs",
+    "invite": "node tools/invite.mjs",
+    "dupcheck": "python3 tools/dupcheck.py",
+    "format": "prettier --write index.html src shared server tests tools package.json README.md docs/ARCHITECTURE.md CHANGELOG.md",
+    "catalog:build": "node tools/build-catalog.mjs"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=24.15.0"
+  },
+  "dependencies": {
+    "better-auth": "1.7.12",
+    "papaparse": "5.7.0"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10",
+    "vite": "8.3.5"
   },
   "license": "MIT"
 }

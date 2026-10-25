@@ -1,0 +1,1102 @@
+:root {
+  --bg: #0a0b10;
+  --pnl: #12141c;
+  --pnl2: #1a1d28;
+  --ln: #262a38;
+  --ln2: #323747;
+  --tx: #e8eaf2;
+  --tx2: #9aa0b8;
+  --tx3: #5f657d;
+  --cy: #3ddc97;
+  --am: #ffb020;
+  --rd: #ff4d5e;
+  --vi: #9b6dff;
+  --bl: #4dc4ff;
+  --ok: #3ddc97;
+  --er: #ff4d5e;
+  --cur: #ffb020;
+  /* --wait 是「遮蔽中未打出的字母」的颜色。原 #4a5068 在深色背景上几乎看不见，
+     整行只剩当前位下面那个小点，用户不知道后面还有几个字母。
+     调到 #6e7488：既明显弱于已打对的绿和当前位的橙，又能看清有几个字。 */
+  --wait: #6e7488;
+  --accent: #3ddc97; /* 品牌强调色：榜单“我”行背景 / 昵称框聚焦边框（此前漏定义，.me 行一直没高亮） */
+  --pn: #8b93a8; /* 标点字符色 */
+  --prog: rgba(255, 255, 255, 0.07); /* 进度条槽 */
+  --m1: #f5c518;
+  --m2: #c8c8c8;
+  --m3: #cd7f32; /* 前三名奖牌色 */
+}
+
+/* ================= 主题配色 =================
+   dark（默认，原样不动）/ white（浅色·中性）/ green（浅色·绿意）
+   全部通过覆盖 CSS 变量实现——组件早已全程变量化，这里不碰业务选择器。
+   ?theme=white|green|dark 可强制指定（并记住选择），见 head 内联脚本。 */
+:root[data-theme="white"] {
+  --bg: #f2f3f6;
+  --pnl: #ffffff;
+  --pnl2: #eceef3;
+  --ln: #dfe2e9;
+  --ln2: #c6cad4;
+  --tx: #1b1e26;
+  --tx2: #5a6172;
+  --tx3: #7b8293;
+  --cy: #0a9d66;
+  --ok: #0a9d66;
+  --accent: #0a9d66;
+  --er: #d92d42;
+  --rd: #d92d42;
+  --am: #b06d00;
+  --cur: #b06d00;
+  --vi: #7a4dd6;
+  --bl: #0e8ac0;
+  --wait: #a9afc0;
+  --pn: #6d7383;
+  --prog: rgba(0, 0, 0, 0.08);
+  --m1: #b8860b;
+  --m2: #78808f;
+  --m3: #a05a2c;
+}
+:root[data-theme="green"] {
+  --bg: #edf6ef;
+  --pnl: #ffffff;
+  --pnl2: #e2f0e6;
+  --ln: #cde3d3;
+  --ln2: #b3d2bb;
+  --tx: #15281b;
+  --tx2: #4d6355;
+  --tx3: #74897b;
+  --cy: #0b8a4e;
+  --ok: #0b8a4e;
+  --accent: #0b8a4e;
+  --er: #cc2e40;
+  --rd: #cc2e40;
+  --am: #a56705;
+  --cur: #a56705;
+  --vi: #7248d0;
+  --bl: #0d84b6;
+  --wait: #a8bcae;
+  --pn: #64796c;
+  --prog: rgba(0, 0, 0, 0.08);
+  --m1: #b8860b;
+  --m2: #78808f;
+  --m3: #a05a2c;
+}
+/* 朗读诊断角标的琥珀底色是写死的 rgba，浅色主题下必须换深琥珀才看得见 */
+:root[data-theme="white"] .ttsbadge,
+:root[data-theme="green"] .ttsbadge {
+  background: rgba(176, 109, 0, 0.1);
+  border-color: rgba(176, 109, 0, 0.38);
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: var(--bg);
+  color: var(--tx);
+  min-height: 100vh;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  padding: 0;
+  overflow-x: hidden;
+}
+.wrap {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 20px 20px 60px;
+}
+
+/* 震屏容器 */
+#stage {
+  transition: transform 0.06s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* ---------- header ---------- */
+.hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.hd h1 {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 15px;
+  letter-spacing: 0.24em;
+  color: var(--cy);
+}
+.hd .meta {
+  font-family: ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--tx3);
+  letter-spacing: 0.08em;
+}
+
+/* ---------- live stats ---------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 1px;
+  background: var(--ln);
+  border: 1px solid var(--ln);
+  border-radius: 11px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.stat {
+  background: var(--pnl);
+  padding: 11px 13px;
+}
+.stat .sv {
+  font-family: ui-monospace, monospace;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.15;
+  transition:
+    transform 0.08s,
+    color 0.15s;
+}
+.stat .sl {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--tx3);
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+.stat .sv.pulse {
+  transform: scale(1.22);
+  color: var(--cy);
+}
+.stat .sv.pulseBad {
+  transform: scale(1.18);
+  color: var(--er);
+}
+.c-cy {
+  color: var(--cy);
+}
+.c-am {
+  color: var(--am);
+}
+.c-rd {
+  color: var(--er);
+}
+.c-vi {
+  color: var(--vi);
+}
+.c-bl {
+  color: var(--bl);
+}
+
+/* ---------- progress ---------- */
+.prog {
+  height: 4px;
+  background: var(--prog);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.prog i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--cy), var(--bl));
+  border-radius: 99px;
+  transition: width 0.1s linear;
+}
+
+/* ---------- combo ---------- */
+.combo {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  height: 56px;
+  margin-bottom: 4px;
+}
+.combo .n {
+  font-family: ui-monospace, monospace;
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--am);
+  line-height: 1;
+  transition:
+    transform 0.09s cubic-bezier(0.2, 1.6, 0.4, 1),
+    color 0.2s,
+    opacity 0.25s;
+}
+.combo .n.zero {
+  color: var(--tx3);
+  opacity: 0.45;
+}
+.combo .n.pop {
+  transform: scale(1.35);
+}
+.combo .lab {
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--tx3);
+}
+.combo .mult {
+  font-family: ui-monospace, monospace;
+  font-size: 14px;
+  color: var(--vi);
+  padding: 3px 9px;
+  border: 1px solid var(--ln);
+  border-radius: 6px;
+  transition: 0.2s;
+}
+.combo .mult.hot {
+  color: #06140e;
+  background: var(--cy);
+  border-color: var(--cy);
+}
+
+/* ---------- word display ---------- */
+.wordbox {
+  background: var(--pnl);
+  border: 1px solid var(--ln);
+  border-radius: 16px;
+  padding: 42px 30px;
+  text-align: center;
+  margin-bottom: 18px;
+  position: relative;
+  overflow: hidden;
+}
+.word {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: clamp(30px, 7vw, 52px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  word-break: break-word;
+}
+.ch {
+  position: relative;
+  display: inline-block;
+  transition:
+    color 0.1s,
+    transform 0.09s;
+}
+.ch.w {
+  color: var(--wait);
+}
+.ch.cur {
+  color: var(--cur);
+  transform: translateY(-4px);
+}
+.ch.cur::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 3px;
+  height: 3px;
+  margin-left: -1.5px;
+  border-radius: 99px;
+  background: var(--cur);
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+.ch.ok {
+  color: var(--ok);
+}
+.ch.err {
+  color: var(--er);
+}
+.ch.err::after {
+  content: "×";
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  color: var(--er);
+}
+/* 空格位：␣ 符号用弱化色 + 更窄，避免和字母抢视觉 */
+.ch.sp {
+  color: var(--tx3);
+  font-size: 0.62em;
+  vertical-align: 0.12em;
+  padding: 0 0.04em;
+}
+/* 连字符 / 撇号：必须一直可见（否则用户不知道这里要按什么键），
+   但【不能用 --ok / --cy 绿】—— 那个颜色代表「已打对」，
+   用一样的绿会让人误以为连字符已经打完了。
+   改用中性亮灰 + 略小字号：可见但不抢「已打对」的语义。 */
+.ch.pn {
+  color: var(--pn);
+  font-size: 0.82em;
+  font-weight: 600;
+}
+/* 连字符已打对时：跟着 .ok 变绿，说明这一步完成了 */
+.ch.pn.ok {
+  color: var(--ok);
+}
+.ch.pop {
+  animation: pop 0.18s cubic-bezier(0.2, 1.7, 0.4, 1);
+}
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.3);
+    color: #fff;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.wordbox.flashGood {
+  animation: fg 0.22s ease;
+}
+.wordbox.flashBad {
+  animation: fb 0.22s ease;
+}
+@keyframes fg {
+  0% {
+    border-color: var(--ln);
+  }
+  40% {
+    border-color: var(--ok);
+    box-shadow: 0 0 34px -8px rgba(61, 220, 151, 0.5);
+  }
+}
+@keyframes fb {
+  0% {
+    border-color: var(--ln);
+  }
+  40% {
+    border-color: var(--er);
+    box-shadow: 0 0 34px -8px rgba(255, 77, 94, 0.5);
+  }
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--tx3);
+  margin-top: 16px;
+  line-height: 1.7;
+}
+.hint kbd {
+  font-family: ui-monospace, monospace;
+  font-size: 10.5px;
+  background: var(--pnl2);
+  border: 1px solid var(--ln);
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: var(--tx2);
+}
+
+/* ---------- controls ---------- */
+.ctl {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 22px;
+}
+.btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #06140e;
+  cursor: pointer;
+  background: linear-gradient(180deg, #4fe6a8, #2fbd80);
+  border: none;
+  border-radius: 9px;
+  padding: 10px 20px;
+  transition:
+    transform 0.09s,
+    filter 0.15s;
+}
+.btn:active {
+  transform: scale(0.96);
+}
+.btn.g {
+  background: transparent;
+  color: var(--tx2);
+  border: 1px solid var(--ln2);
+  font-weight: 500;
+}
+.btn.g:hover {
+  color: var(--tx);
+  border-color: var(--tx3);
+}
+select,
+label.sw {
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--tx2);
+  background: var(--pnl);
+  border: 1px solid var(--ln);
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+label.sw {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  user-select: none;
+}
+label.sw input {
+  accent-color: var(--cy);
+  cursor: pointer;
+}
+/* ---------- 主题切换 ---------- */
+.themes {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--pnl);
+  border: 1px solid var(--ln);
+  border-radius: 9px;
+}
+.themes .th {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tx2);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.themes .th:hover {
+  color: var(--tx);
+}
+.themes .th.on {
+  color: #06140e;
+  background: var(--cy);
+}
+.themes .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--ln2);
+  flex: none;
+}
+.dot.d-dark {
+  background: linear-gradient(135deg, #0a0b10 50%, #3ddc97 50%);
+}
+.dot.d-white {
+  background: linear-gradient(135deg, #ffffff 50%, #0a9d66 50%);
+}
+.dot.d-green {
+  background: linear-gradient(135deg, #edf6ef 50%, #0b8a4e 50%);
+}
+.spacer {
+  flex: 1;
+}
+/* 朗读音量指示：跟音效开关同风格，但不做成可点控件（没有交互） */
+.ttsvol {
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--cy);
+  background: var(--pnl);
+  border: 1px solid var(--ln);
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  opacity: 0.62;
+  transition: opacity 0.18s ease;
+}
+/* 朗读诊断角标：只在「尝试过但没真正出声」时出现，点一下用手势重试 */
+.ttsbadge {
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--cur);
+  background: rgba(255, 176, 32, 0.12);
+  border: 1px solid rgba(255, 176, 32, 0.38);
+  border-radius: 8px;
+  padding: 9px 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ttsbadge.hide {
+  display: none;
+}
+/* 浏览器根本不支持朗读时：灰色、不可点（点了也没用，别误导用户） */
+.ttsbadge.dead {
+  cursor: default;
+  color: var(--tx3);
+  background: var(--pnl);
+  border-color: var(--ln);
+}
+
+/* 音频被拦住时的解锁入口 */
+.aubadge {
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--am);
+  background: var(--pnl);
+  border: 1px solid var(--am);
+  border-radius: 8px;
+  padding: 9px 11px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.aubadge:active {
+  transform: scale(0.96);
+}
+.aubadge.hide {
+  display: none;
+}
+
+/* ---------- 访问计数角标（右下角，不干扰打字） ---------- */
+#visitor {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 50;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--tx3);
+  background: var(--pnl);
+  border: 1px solid var(--ln);
+  border-radius: 20px;
+  padding: 5px 12px;
+  opacity: 0.72;
+  transition: opacity 0.25s;
+  -webkit-tap-highlight-color: transparent;
+}
+#visitor:hover {
+  opacity: 1;
+}
+#visitor b {
+  color: var(--tx2);
+  font-weight: 600;
+}
+#visitor .sep {
+  opacity: 0.4;
+  margin: 0 4px;
+}
+
+/* ---------- 中文释义 ---------- */
+.cn {
+  font-family: "PingFang SC", "Microsoft YaHei", "Songti SC", sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--cy);
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px dashed var(--ln);
+  letter-spacing: 0.04em;
+}
+.cn.dim {
+  color: var(--tx3);
+}
+
+/* ---------- 导入词库 ---------- */
+.importer {
+  background: var(--pnl);
+  border: 1px solid var(--ln);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.importer.hide {
+  display: none;
+}
+.importer h3 {
+  font-family: ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  color: var(--tx3);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.ihint {
+  font-size: 12px;
+  color: var(--tx2);
+  margin-bottom: 8px;
+}
+.iex {
+  font-family: ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: var(--tx3);
+  background: var(--pnl2);
+  border: 1px solid var(--ln);
+  border-radius: 8px;
+  padding: 11px 13px;
+  margin: 0 0 11px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+.importer textarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--tx1);
+  background: var(--pnl2);
+  border: 1px solid var(--ln);
+  border-radius: 8px;
+  padding: 12px 14px;
+  outline: none;
+}
+.importer textarea:focus {
+  border-color: var(--cy);
+}
+.ibrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.imsg {
+  font-size: 12px;
+  color: var(--cy);
+}
+.imsg.err {
+  color: var(--er);
+}
+
+/* ---------- wrong book ---------- */
+.wrong {
+  background: var(--pnl);
+  border: 1px solid var(--ln);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.wrong h3 {
+  font-family: ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  color: var(--tx3);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.wlist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.witem {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  background: var(--pnl2);
+  border: 1px solid var(--ln);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.witem .bad {
+  color: var(--er);
+}
+.witem .wcn {
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 11px;
+  color: var(--tx3);
+}
+.witem .cnt {
+  font-size: 10px;
+  color: var(--tx3);
+}
+.witem.clear {
+  cursor: pointer;
+}
+.witem.clear:hover {
+  border-color: var(--er);
+  color: var(--er);
+}
+.empty {
+  font-size: 12px;
+  color: var(--tx3);
+  font-style: italic;
+}
+
+/* ---------- 排行榜 ---------- */
+.board {
+  background: var(--pnl);
+  border: 1px solid var(--ln);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.board h3 {
+  font-family: ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  color: var(--tx3);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.bbank {
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--tx);
+  text-transform: none;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+.bjoin {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.nick {
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  padding: 7px 11px;
+  border-radius: 8px;
+  background: var(--bg2);
+  border: 1px solid var(--ln);
+  color: var(--tx);
+  min-width: 240px;
+  flex: 1;
+}
+.nick:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.nick:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.nickmsg {
+  font-size: 12px;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+.nickmsg.ok {
+  color: var(--ok);
+}
+.nickmsg.err {
+  color: var(--er);
+}
+.blist {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 420px;
+  overflow: auto;
+}
+.bhead,
+.brow {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 62px 56px 46px 72px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+.bhead {
+  font-size: 11px;
+  color: var(--tx3);
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: 0;
+}
+.brow {
+  background: var(--pnl2);
+  border: 1px solid var(--ln);
+  font-size: 13px;
+}
+.brow .rk {
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  text-align: center;
+  color: var(--tx3);
+}
+.brow.top1 .rk {
+  color: var(--m1);
+}
+.brow.top2 .rk {
+  color: var(--m2);
+}
+.brow.top3 .rk {
+  color: var(--m3);
+}
+.brow .nm {
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.brow .tm {
+  font-family: ui-monospace, monospace;
+  color: var(--tx);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.brow .ac,
+.brow .cb {
+  font-family: ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--tx);
+}
+.brow .dt {
+  font-size: 11px;
+  color: var(--tx3);
+  text-align: right;
+}
+.brow.me {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.brow.me .nm,
+.brow.me .tm,
+.brow.me .ac,
+.brow.me .cb,
+.brow.me .dt {
+  color: #fff;
+}
+.bnote {
+  font-size: 11.5px;
+  color: var(--tx3);
+  margin-top: 10px;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+.bnote.err {
+  color: var(--er);
+}
+.nickmsg a,
+.bnote a {
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* ---------- done panel ---------- */
+#done {
+  display: none;
+  text-align: center;
+  padding: 20px 0;
+}
+#done.on {
+  display: block;
+}
+#done .dt {
+  font-family: ui-monospace, monospace;
+  font-size: clamp(24px, 6vw, 36px);
+  font-weight: 700;
+  color: var(--cy);
+}
+.bhead .dt {
+  font-size: 11px;
+  color: var(--tx3);
+  font-weight: 400;
+}
+.ds {
+  margin-top: 8px;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  color: var(--tx3);
+  text-transform: uppercase;
+}
+.dg {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 1px;
+  background: var(--ln);
+  border: 1px solid var(--ln);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 26px;
+}
+/* 本轮词表回顾 */
+.dlist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 18px;
+  max-height: 158px;
+  overflow-y: auto;
+}
+.ritem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  background: var(--pnl2);
+  border: 1px solid var(--ln);
+}
+.ritem .ren {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--tx1);
+}
+.ritem .rcn {
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 11px;
+  color: var(--tx3);
+}
+.ritem .rn {
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--am);
+  font-weight: 700;
+}
+.rnote {
+  width: 100%;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--tx3);
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* ---------- 手机软键盘的接入口 ----------
+   必须「可聚焦」才唤得起手机键盘，所以不能用 display:none / visibility:hidden。
+   做法：1px 透明输入框固定定位藏起来，靠 JS 在用户手势里 focus() 唤起键盘。
+   font-size:16px 是必须的 —— iOS 聚焦字号 <16px 的输入框会自动放大整页。 */
+#kb {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  opacity: 0;
+  background: transparent;
+  color: transparent;
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 0;
+}
+/* 手机提示：只在小屏显示（桌面有物理键盘，说了是噪音） */
+.mobonly {
+  display: none;
+}
+
+/* ---------- 小屏适配 ----------
+   原来一条响应式规则都没有。手机上纵向空间还要被软键盘吃掉一半，
+   所以除了缩字号，还要把各处外边距压紧，让词框尽量留在首屏。 */
+@media (max-width: 640px) {
+  .wrap {
+    padding: 12px 12px 44px;
+  }
+  .hd {
+    margin-bottom: 12px;
+  }
+  .hd h1 {
+    font-size: 13px;
+    letter-spacing: 0.18em;
+  }
+  .stats {
+    margin-bottom: 12px;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .stat {
+    padding: 9px 10px;
+  }
+  .stat .sv {
+    font-size: 17px;
+  }
+  .prog {
+    margin-bottom: 14px;
+  }
+  .combo {
+    height: 44px;
+    gap: 9px;
+    margin-bottom: 2px;
+  }
+  .combo .n {
+    font-size: 32px;
+  }
+  .wordbox {
+    padding: 24px 12px;
+    margin-bottom: 12px;
+    border-radius: 14px;
+  }
+  /* 8vw 而不是原来的 7vw：词组（china telecom / united nations）在窄屏上要能放下，
+     再配合 word-break 兜底换行，宁可换行也别横向溢出 */
+  .word {
+    font-size: clamp(23px, 8vw, 38px);
+    letter-spacing: 0.04em;
+  }
+  .cn {
+    font-size: 15px;
+    margin-top: 11px;
+    padding-top: 10px;
+  }
+  .ctl {
+    gap: 7px;
+    margin-bottom: 14px;
+  }
+  .btn {
+    padding: 10px 15px;
+    font-size: 12.5px;
+  }
+  select,
+  label.sw {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+  .themes .th {
+    padding: 8px 9px;
+    font-size: 11.5px;
+  }
+  .ttsvol {
+    padding: 9px 9px;
+  }
+  .importer {
+    padding: 13px 13px;
+  }
+  .iex {
+    font-size: 11px;
+  }
+  .hint {
+    margin-top: 11px;
+    font-size: 11.5px;
+  }
+  .wrong {
+    padding: 13px 13px;
+  }
+  .mobonly {
+    display: inline;
+  }
+}
+/* 触摸设备：去掉 300ms 点击延迟 + 词框看起来可点 */
+@media (hover: none) {
+  .btn,
+  select,
+  label.sw,
+  .witem.clear {
+    touch-action: manipulation;
+  }
+  .wordbox {
+    cursor: pointer;
+  }
+}
+/* 手机上把桌面快捷键说明换掉：手机没有 Tab/Esc 键 */
+@media (max-width: 640px) {
+  .hint .deskonly {
+    display: none;
+  }
+}
